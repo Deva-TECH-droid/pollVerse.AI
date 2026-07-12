@@ -1,0 +1,276 @@
+/* ============================================
+   CREATE PAGE STYLES — LivePoll
+   ============================================ */
+
+.create-container {
+  min-height: calc(100vh - 72px);
+  display: flex;
+  justify-content: center;
+  padding: 48px 20px 80px;
+}
+
+.create-wrapper {
+  width: 100%;
+  max-width: 560px;
+  animation: fadeInUp 0.5s ease both;
+}
+
+/* ============================================
+   HEADER
+   ============================================ */
+
+.create-header {
+  margin-bottom: 40px;
+}
+
+.create-title {
+  font-size: clamp(1.6rem, 4vw, 2.2rem);
+  font-weight: 800;
+  letter-spacing: -0.8px;
+  color: var(--text-primary);
+  margin-bottom: 10px;
+}
+
+.create-subtitle {
+  font-size: 1rem;
+  color: var(--text-secondary);
+}
+
+/* ============================================
+   FORM
+   ============================================ */
+
+.create-form {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  position: relative;
+}
+
+.form-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.form-input {
+  background: var(--bg-secondary);
+  backdrop-filter: var(--backdrop-blur);
+  -webkit-backdrop-filter: var(--backdrop-blur);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 1rem;
+  padding: 14px 18px;
+  transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
+  width: 100%;
+}
+
+.form-input::placeholder {
+  color: var(--text-muted);
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: rgba(108, 99, 255, 0.04);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.char-count {
+  position: absolute;
+  right: 14px;
+  bottom: -22px;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+/* ============================================
+   OPTIONS
+   ============================================ */
+
+.options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.option-input-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.option-input-block:last-child {
+  border-bottom: none;
+}
+
+.option-info-input {
+  margin-left: 38px;
+  font-size: 0.85rem;
+  padding: 10px 14px;
+  resize: vertical;
+  font-family: inherit;
+  color: var(--text-secondary);
+}
+
+.option-input-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.option-number {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--bg-tertiary);
+  backdrop-filter: var(--backdrop-blur);
+  -webkit-backdrop-filter: var(--backdrop-blur);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.option-input {
+  flex: 1;
+  padding: 12px 16px;
+  font-size: 0.95rem;
+}
+
+.remove-option-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  color: var(--error);
+  font-size: 0.7rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background var(--transition), transform var(--transition);
+}
+
+.remove-option-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  transform: scale(1.1);
+}
+
+.add-option-btn {
+  align-self: flex-start;
+  background: transparent;
+  border: 1.5px dashed var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  font-weight: 500;
+  padding: 10px 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: border-color var(--transition), color var(--transition), background var(--transition);
+  margin-top: 4px;
+}
+
+.add-option-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent-light);
+  background: rgba(108, 99, 255, 0.06);
+}
+
+.option-count-hint {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+/* ============================================
+   ERROR
+   ============================================ */
+
+.form-error {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: var(--radius-sm);
+  color: #fca5a5;
+  padding: 12px 16px;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* ============================================
+   SUBMIT BUTTON
+   ============================================ */
+
+.submit-btn {
+  background: linear-gradient(135deg, var(--accent), var(--accent-light));
+  color: #fff;
+  border-radius: var(--radius-md);
+  font-size: 1rem;
+  font-weight: 700;
+  padding: 16px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  box-shadow: 0 4px 24px rgba(108, 99, 255, 0.4);
+  transition: transform var(--transition), box-shadow var(--transition), opacity var(--transition);
+  width: 100%;
+  letter-spacing: 0.3px;
+}
+
+.submit-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 36px rgba(108, 99, 255, 0.55);
+}
+
+.submit-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+
+@media (max-width: 600px) {
+  .create-container {
+    padding: 32px 16px 60px;
+  }
+}

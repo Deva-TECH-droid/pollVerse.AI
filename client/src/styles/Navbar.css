@@ -1,0 +1,127 @@
+/* ============================================
+   NAVBAR STYLES — LivePoll
+   ============================================ */
+
+.navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: rgba(15, 15, 15, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  height: 72px;
+}
+
+.navbar-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* ============================================
+   LOGO
+   ============================================ */
+
+.navbar-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.5px;
+  transition: opacity var(--transition);
+}
+
+.navbar-logo:hover {
+  opacity: 0.85;
+}
+
+.logo-icon {
+  font-size: 1.5rem;
+  filter: drop-shadow(0 0 8px rgba(108, 99, 255, 0.8));
+  animation: pulse-glow 2.5s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { filter: drop-shadow(0 0 6px rgba(108, 99, 255, 0.6)); }
+  50% { filter: drop-shadow(0 0 14px rgba(108, 99, 255, 1)); }
+}
+
+/* ============================================
+   NAV LINKS
+   ============================================ */
+
+.navbar-links {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nav-link {
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  transition: color var(--transition), background var(--transition);
+}
+
+.nav-link:hover,
+.nav-link.active {
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+}
+
+.nav-link-cta {
+  background: var(--accent);
+  color: var(--text-primary) !important;
+  font-weight: 600;
+  padding: 9px 20px;
+  box-shadow: 0 0 20px var(--accent-glow);
+  transition: background var(--transition), transform var(--transition), box-shadow var(--transition);
+}
+
+.nav-link-cta:hover {
+  background: var(--accent-light) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 24px rgba(108, 99, 255, 0.5);
+}
+
+.nav-link-cta.active {
+  background: var(--accent-dark) !important;
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+
+.nav-user-email {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+  .navbar-container {
+    padding: 0 16px;
+  }
+
+  .navbar-logo {
+    font-size: 1.2rem;
+  }
+
+  .nav-link:not(.nav-link-cta) {
+    display: none;
+  }
+}

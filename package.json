@@ -1,0 +1,17 @@
+{
+  "name": "livepoll",
+  "version": "1.0.0",
+  "description": "LivePoll - Real-Time Voting App",
+  "private": true,
+  "scripts": {
+    "start": "concurrently --kill-others-on-fail \"npm run server\" \"npm run client\"",
+    "server": "npm start --prefix server",
+    "client": "npm start --prefix client",
+    "build": "npm run build --prefix client",
+    "start:prod": "npm run build && npm start --prefix server",
+    "install-all": "npm install && npm install --prefix server && npm install --prefix client"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

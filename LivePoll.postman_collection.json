@@ -1,0 +1,116 @@
+{
+  "info": {
+    "_postman_id": "b7c22235-a2b2-4d69-9ad1-db857b344747",
+    "name": "LivePoll",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "27830807"
+  },
+  "item": [
+    {
+      "name": "Create Poll",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"question\":\"Good Name?\",\r\n    \"options\" : [{\"text\":\"yes\"},{\"text\":\"no\"}]\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:5000/api/polls",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "polls"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Post Vote Cast",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"question\":\"Good Name?\",\r\n    \"options\" : [{\"text\":\"yes\"},{\"text\":\"no\"}]\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "http://localhost:5000/api/polls",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "polls"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get All Polls",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:5000/api/polls",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "polls"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get 1 Poll",
+      "protocolProfileBehavior": {
+        "disableBodyPruning": true
+      },
+      "request": {
+        "method": "GET",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"question\":\"Good Name?\",\r\n    \"options\" : [{\"text\":\"yes\"},{\"text\":\"no\"}]\r\n}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/api/polls/6a3db9793c498a3ed3a68c9e",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "5000",
+          "path": [
+            "api",
+            "polls",
+            "6a3db9793c498a3ed3a68c9e"
+          ]
+        }
+      },
+      "response": []
+    }
+  ]
+}

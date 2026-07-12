@@ -1,0 +1,232 @@
+/* ============================================
+   HOME PAGE STYLES — LivePoll
+   ============================================ */
+
+.home-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 60px 24px 80px;
+}
+
+/* ============================================
+   HERO SECTION
+   ============================================ */
+
+.home-hero {
+  text-align: center;
+  margin-bottom: 56px;
+  animation: fadeInUp 0.6s ease both;
+}
+
+.home-title {
+  font-size: clamp(2.2rem, 5vw, 3.5rem);
+  font-weight: 800;
+  letter-spacing: -1.5px;
+  line-height: 1.1;
+  margin-bottom: 16px;
+  color: var(--text-primary);
+}
+
+.home-title .accent {
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-light) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.home-subtitle {
+  font-size: 1.1rem;
+  color: var(--text-secondary);
+  font-weight: 400;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+/* ============================================
+   POLL GRID
+   ============================================ */
+
+.polls-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+  animation: fadeInUp 0.7s ease both;
+  animation-delay: 0.1s;
+}
+
+/* ============================================
+   POLL CARD
+   ============================================ */
+
+.poll-card {
+  background: var(--bg-secondary);
+  backdrop-filter: var(--backdrop-blur);
+  -webkit-backdrop-filter: var(--backdrop-blur);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 180px;
+}
+
+.poll-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-light));
+  opacity: 0;
+  transition: opacity var(--transition);
+}
+
+.poll-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), 0 0 0 1px var(--border-hover);
+  border-color: var(--border-hover);
+}
+
+.poll-card:hover::before {
+  opacity: 1;
+}
+
+.poll-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Card Header */
+.poll-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.poll-card-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: var(--accent-light);
+  background: rgba(108, 99, 255, 0.15);
+  padding: 3px 10px;
+  border-radius: 99px;
+  border: 1px solid rgba(108, 99, 255, 0.3);
+}
+
+.poll-card-date {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* Question */
+.poll-card-question {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.4;
+  flex: 1;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Card Footer */
+.poll-card-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.poll-card-stats {
+  display: flex;
+  gap: 20px;
+}
+
+.poll-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.poll-stat-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.poll-stat-label {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.poll-card-top {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.poll-card-top span {
+  font-weight: 500;
+}
+
+/* Arrow */
+.poll-card-arrow {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  font-size: 1.1rem;
+  color: var(--text-muted);
+  transition: transform var(--transition), color var(--transition);
+}
+
+.poll-card:hover .poll-card-arrow {
+  transform: translateX(4px);
+  color: var(--accent-light);
+}
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+
+@media (max-width: 600px) {
+  .home-container {
+    padding: 40px 16px 60px;
+  }
+
+  .home-hero {
+    margin-bottom: 36px;
+  }
+
+  .polls-grid {
+    grid-template-columns: 1fr;
+  }
+}
