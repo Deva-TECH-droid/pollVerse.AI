@@ -37,7 +37,7 @@ async function closeAndRewardPoll(poll) {
 
   console.log(`🏆 Poll "${poll.question}" closed. Winner: "${winningOptionText}" (${winningVotes.length} correct voters)`);
 
-  const frontendUrl = (process.env.CLIENT_URL || 'http://localhost:3000').replace(/\/$/, '');
+  const frontendUrl = (process.env.CLIENT_URL || 'https://poll-verse-ai-d2f3.vercel.app/').replace(/\/$/, '');
 
   for (const vote of winningVotes) {
     try {
