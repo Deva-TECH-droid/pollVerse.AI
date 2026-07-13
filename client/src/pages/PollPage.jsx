@@ -2,15 +2,11 @@ import React, { useEffect, useState, useContext, useCallback, useRef } from 'rea
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '@clerk/clerk-react';
 import socket from '../socket';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import { QRCodeCanvas } from 'qrcode.react';
 import { AuthContext } from '../context/AuthContext';
 import Confetti from '../components/Confetti';
 import '../styles/PollPage.css';
 
 const API_URL = process.env.REACT_APP_API_URL || '';
-
-const COLORS = ['#6c63ff', '#22c55e', '#f59e0b', '#ef4444', '#0ea5e9', '#d946ef'];
 
 function PollPage() {
   const { id } = useParams();
@@ -198,6 +194,15 @@ function PollPage() {
           </div>
         )}
 
+        {poll.isClosed && poll.aiInsight && (
+          <div className="ai-insight-card">
+            <p className="ai-insight-label">✨ Know More</p>
+            {poll.aiInsight.split('\n').filter(Boolean).map((para, i) => (
+              <p key={i} className="ai-insight-text">{para}</p>
+            ))}
+          </div>
+        )}
+
         <div className="poll-options">
           {poll.options.map((option, index) => {
             const pct = getPercentage(option.votes);
@@ -278,43 +283,6 @@ function PollPage() {
         )}
         {poll.isClosed && voted && votedIndex !== winningIndex && (
           <p className="vote-prompt">This poll has closed. Your prediction didn't match the winning option this time.</p>
-        )}
-
-        {poll.totalVotes > 0 && (
-          <div className="poll-visuals">
-            <div className="chart-container">
-              <ResponsiveContainer width="100%" height={250}>
-                <PieChart>
-                  <Pie
-                    data={poll.options}
-                    dataKey="votes"
-                    nameKey="text"
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={5}
-                    isAnimationActive={true}
-                  >
-                    {poll.options.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{ backgroundColor: '#1a1a1a', borderColor: '#2a2a2a', borderRadius: '8px' }}
-                    itemStyle={{ color: '#fff' }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-
-            <div className="qr-container">
-              <p>Scan to vote</p>
-              <div className="qr-box">
-                <QRCodeCanvas value={window.location.href} size={120} bgColor={'#1a1a1a'} fgColor={'#ffffff'} />
-              </div>
-            </div>
-          </div>
         )}
       </div>
     </div>

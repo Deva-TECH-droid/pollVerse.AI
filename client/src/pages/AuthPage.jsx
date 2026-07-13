@@ -47,7 +47,7 @@ function AuthPage() {
         delay: 0.5,
       });
 
-      gsap.from('.auth-header > *', {
+     gsap.from('.auth-side-title, .auth-side-desc', {
         y: 30,
         opacity: 0,
         duration: 0.6,
