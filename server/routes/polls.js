@@ -22,12 +22,21 @@ function requireAdmin(req, res, next) {
 }
 
 async function notifyUsersAboutNewPoll(poll, creator) {
+  console.log(`\n📬 [notifyUsersAboutNewPoll] Starting for poll "${poll.question}" (${poll._id})`);
+
   const users = await User.find({});
-  if (users.length === 0) return { sent: 0, failed: 0 };
+  console.log(`📬 [notifyUsersAboutNewPoll] Found ${users.length} user(s) in database:`, users.map((u) => u.email));
+
+  if (users.length === 0) {
+    console.log('📬 [notifyUsersAboutNewPoll] No registered users — nothing to send.');
+    return { sent: 0, failed: 0 };
+  }
 
   const frontendUrl = (process.env.CLIENT_URL || 'http://localhost:3000').replace(/\/$/, '');
   const pollUrl = `${frontendUrl}/poll/${poll._id}`;
   const creatorName = creator.name || getDisplayName(creator.email);
+
+  console.log(`📬 [notifyUsersAboutNewPoll] Poll URL will be: ${pollUrl}`);
 
   const results = await Promise.allSettled(
     users.map((user) =>
@@ -44,10 +53,19 @@ async function notifyUsersAboutNewPoll(poll, creator) {
     )
   );
 
+  results.forEach((result, i) => {
+    const email = users[i].email;
+    if (result.status === 'fulfilled') {
+      console.log(`📬 [notifyUsersAboutNewPoll] ✅ Sent to ${email}`);
+    } else {
+      console.error(`📬 [notifyUsersAboutNewPoll] ❌ FAILED to send to ${email}:`, result.reason);
+    }
+  });
+
   const sent = results.filter((r) => r.status === 'fulfilled').length;
   const failed = results.filter((r) => r.status === 'rejected').length;
 
-  console.log(`📢 Poll notifications: ${sent} sent, ${failed} failed (${users.length} registered users)`);
+  console.log(`📬 [notifyUsersAboutNewPoll] Done: ${sent} sent, ${failed} failed (${users.length} total users)\n`);
   return { sent, failed };
 }
 
@@ -92,9 +110,10 @@ router.post('/', requireAuth, requireAdmin, async (req, res) => {
     });
 
     await poll.save();
+    console.log(`✅ Poll created: "${poll.question}" (${poll._id}) by ${req.user.email}`);
 
     notifyUsersAboutNewPoll(poll, req.user).catch((err) => {
-      console.error('Failed to send poll notifications:', err);
+      console.error('❌ notifyUsersAboutNewPoll threw an uncaught error:', err);
     });
 
     res.status(201).json(poll);
