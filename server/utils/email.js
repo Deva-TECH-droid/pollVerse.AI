@@ -1,52 +1,38 @@
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 const { getDisplayName } = require('./displayName');
 
-let transporter = null;
+let resendClient = null;
 
 function isEmailConfigured() {
-  return Boolean(
-    process.env.EMAIL_HOST &&
-    process.env.EMAIL_USER &&
-    process.env.EMAIL_PASS
-  );
+  return Boolean(process.env.RESEND_API_KEY);
 }
 
-function getTransporter() {
-  if (transporter) return transporter;
-
-  if (!isEmailConfigured()) {
-    return null;
-  }
-
-  transporter = nodemailer.createTransport({
-    host: process.env.EMAIL_HOST,
-    port: Number(process.env.EMAIL_PORT) || 587,
-    secure: process.env.EMAIL_SECURE === 'true',
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
-    },
-  });
-
-  return transporter;
+function getResendClient() {
+  if (resendClient) return resendClient;
+  if (!isEmailConfigured()) return null;
+  resendClient = new Resend(process.env.RESEND_API_KEY);
+  return resendClient;
 }
 
 function getFromAddress() {
-  return process.env.EMAIL_FROM || `"LivePoll" <${process.env.EMAIL_USER}>`;
+  // Resend's test domain works immediately with zero setup — swap in your
+  // own verified domain later (Resend dashboard → Domains) for a custom
+  // "from" address like PollVerse <notify@yourdomain.com>.
+  return process.env.EMAIL_FROM || 'PollVerse <onboarding@resend.dev>';
 }
 
 async function sendEmail({ to, subject, html, text }) {
-  const transport = getTransporter();
+  const client = getResendClient();
 
-  if (!transport) {
-    console.warn('\n⚠️  Email not configured. Set EMAIL_HOST, EMAIL_USER, EMAIL_PASS in server/.env');
+  if (!client) {
+    console.warn('\n⚠️  Email not configured. Set RESEND_API_KEY in server/.env');
     console.log(`📧 Would send to: ${to}`);
     console.log(`   Subject: ${subject}`);
     if (text) console.log(`   Body:\n${text}\n`);
     return { mocked: true };
   }
 
-  const info = await transport.sendMail({
+  const { data, error } = await client.emails.send({
     from: getFromAddress(),
     to,
     subject,
@@ -54,8 +40,13 @@ async function sendEmail({ to, subject, html, text }) {
     text,
   });
 
-  console.log(`✅ Email sent to ${to} — ${info.messageId}`);
-  return info;
+  if (error) {
+    console.error(`❌ Resend failed to send to ${to}:`, error);
+    throw new Error(error.message || 'Resend send failed');
+  }
+
+  console.log(`✅ Email sent to ${to} — ${data?.id}`);
+  return data;
 }
 
 async function sendOTPEmail(email, otp) {
@@ -124,6 +115,7 @@ async function sendNewPollEmail({ to, recipientEmail, creatorName, pollQuestion,
   return sendEmail({ to, subject, html, text });
 }
 
+// Sent to every user whose vote matched the winning option once a poll closes.
 async function sendWinnerEmail({ to, recipientEmail, pollQuestion, pollDescription, winningOption, creditsEarned, currentCredits, pollUrl }) {
   const recipientName = getDisplayName(recipientEmail);
   const subject = '🎉 Congratulations — your prediction was correct!';
@@ -169,6 +161,7 @@ async function sendWinnerEmail({ to, recipientEmail, pollQuestion, pollDescripti
   return sendEmail({ to, subject, html, text });
 }
 
+// Sent once when a user crosses the 200-credit milestone.
 async function sendMilestoneEmail({ to, recipientEmail, currentCredits, claimUrl }) {
   const recipientName = getDisplayName(recipientEmail);
   const subject = '🏆 You unlocked a 200-credit reward!';
@@ -195,6 +188,7 @@ async function sendMilestoneEmail({ to, recipientEmail, currentCredits, claimUrl
   return sendEmail({ to, subject, html, text });
 }
 
+// Sent to the admin whenever a user submits feedback.
 async function sendFeedbackEmail({ to, fromName, fromEmail, message }) {
   const subject = `💬 New feedback from ${fromName}`;
 

@@ -16,6 +16,7 @@
     "mongoose": "^8.0.3",
     "node-cron": "^3.0.3",
     "nodemailer": "^9.0.3",
+    "resend": "^6.17.2",
     "socket.io": "^4.6.2",
     "svix": "^1.42.0"
   },
