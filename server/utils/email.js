@@ -1,51 +1,52 @@
-const { Resend } = require('resend');
 const { getDisplayName } = require('./displayName');
 
-let resendClient = null;
+const BREVO_API_URL = 'https://api.brevo.com/v3/smtp/email';
 
 function isEmailConfigured() {
-  return Boolean(process.env.RESEND_API_KEY);
-}
-
-function getResendClient() {
-  if (resendClient) return resendClient;
-  if (!isEmailConfigured()) return null;
-  resendClient = new Resend(process.env.RESEND_API_KEY);
-  return resendClient;
+  return Boolean(process.env.BREVO_API_KEY && process.env.EMAIL_FROM_ADDRESS);
 }
 
 function getFromAddress() {
-  // Resend's test domain works immediately with zero setup — swap in your
-  // own verified domain later (Resend dashboard → Domains) for a custom
-  // "from" address like PollVerse <notify@yourdomain.com>.
-  return process.env.EMAIL_FROM || 'PollVerse <onboarding@resend.dev>';
+  return {
+    email: process.env.EMAIL_FROM_ADDRESS,
+    name: process.env.EMAIL_FROM_NAME || 'PollVerse',
+  };
 }
 
 async function sendEmail({ to, subject, html, text }) {
-  const client = getResendClient();
-
-  if (!client) {
-    console.warn('\n⚠️  Email not configured. Set RESEND_API_KEY in server/.env');
+  if (!isEmailConfigured()) {
+    console.warn('\n⚠️  Email not configured. Set BREVO_API_KEY and EMAIL_FROM_ADDRESS in server/.env');
     console.log(`📧 Would send to: ${to}`);
     console.log(`   Subject: ${subject}`);
     if (text) console.log(`   Body:\n${text}\n`);
     return { mocked: true };
   }
 
-  const { data, error } = await client.emails.send({
-    from: getFromAddress(),
-    to,
-    subject,
-    html,
-    text,
+  const res = await fetch(BREVO_API_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      'api-key': process.env.BREVO_API_KEY,
+    },
+    body: JSON.stringify({
+      sender: getFromAddress(),
+      to: [{ email: to }],
+      subject,
+      htmlContent: html,
+      textContent: text,
+    }),
   });
 
-  if (error) {
-    console.error(`❌ Resend failed to send to ${to}:`, error);
-    throw new Error(error.message || 'Resend send failed');
+  if (!res.ok) {
+    const errBody = await res.text();
+    console.error(`❌ Brevo failed to send to ${to}:`, res.status, errBody);
+    throw new Error(`Brevo send failed (${res.status}): ${errBody}`);
   }
 
-  console.log(`✅ Email sent to ${to} — ${data?.id}`);
+  const data = await res.json();
+
+  console.log(`✅ Email sent to ${to} — ${data?.messageId}`);
   return data;
 }
 
