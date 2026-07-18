@@ -1,0 +1,366 @@
+/* ============================================
+   AI DASHBOARD PAGE STYLES — LivePoll
+   ============================================ */
+
+.ai-dashboard-container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 48px 20px 80px;
+  animation: fadeInUp 0.6s ease both;
+}
+
+.ai-dashboard-header {
+  text-align: center;
+  margin-bottom: 48px;
+}
+
+.ai-dashboard-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: var(--accent-light);
+  background: rgba(108, 99, 255, 0.1);
+  border: 1px solid rgba(108, 99, 255, 0.25);
+  padding: 6px 16px;
+  border-radius: 99px;
+  margin-bottom: 20px;
+}
+
+.ai-pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent-light);
+  box-shadow: 0 0 8px var(--accent-light);
+  animation: ai-pulse 1.8s infinite ease-in-out;
+}
+
+@keyframes ai-pulse {
+  0%, 100% { opacity: 0.4; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+
+.ai-dashboard-title {
+  font-size: clamp(2rem, 5vw, 2.8rem);
+  font-weight: 800;
+  letter-spacing: -1px;
+  margin-bottom: 16px;
+}
+
+.ai-dashboard-subtitle {
+  font-size: 1.1rem;
+  color: var(--text-secondary);
+  max-width: 650px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+/* ============================================
+   STATS GRID
+   ============================================ */
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+  margin-bottom: 56px;
+}
+
+.stat-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  transition: transform var(--transition), border-color var(--transition), box-shadow var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--border-hover);
+  box-shadow: var(--shadow-md);
+}
+
+.stat-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+}
+
+.total-predictions-card::after { background: #3b82f6; }
+.correct-predictions-card::after { background: #22c55e; }
+.accuracy-card::after { background: #eab308; }
+.confidence-card::after { background: #a855f7; }
+
+.stat-icon-wrapper {
+  font-size: 2.2rem;
+  width: 56px;
+  height: 56px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.stat-label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+.stat-number {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.mini-progress-track {
+  width: 100px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 2px;
+  margin-top: 8px;
+  overflow: hidden;
+}
+
+.mini-progress-bar {
+  height: 100%;
+  background: #eab308;
+  border-radius: 2px;
+}
+
+.mini-progress-bar.confidence-bar {
+  background: #a855f7;
+}
+
+/* ============================================
+   HISTORY SECTION
+   ============================================ */
+
+.history-section {
+  background: rgba(255, 255, 255, 0.01);
+  border-top: 1px solid var(--border);
+  padding-top: 48px;
+}
+
+.history-title {
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin-bottom: 28px;
+  letter-spacing: -0.5px;
+}
+
+.empty-history-state {
+  text-align: center;
+  padding: 64px 32px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.01);
+}
+
+.empty-history-icon {
+  font-size: 3rem;
+  margin-bottom: 20px;
+}
+
+.empty-history-state h3 {
+  font-size: 1.2rem;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.empty-history-state p {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.history-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.history-card:hover {
+  border-color: var(--border-hover);
+  box-shadow: var(--shadow-sm);
+}
+
+.history-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding-bottom: 16px;
+}
+
+.history-question {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-decoration: none;
+  line-height: 1.4;
+  transition: color var(--transition);
+}
+
+.history-question:hover {
+  color: var(--accent-light);
+}
+
+.accuracy-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  border-radius: 99px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.accuracy-badge.correct {
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.25);
+  color: #4ade80;
+}
+
+.accuracy-badge.incorrect {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: #f87171;
+}
+
+.history-card-body {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.history-details-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.detail-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.detail-value {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+}
+
+.detail-value strong {
+  color: var(--text-primary);
+}
+
+.detail-confidence-tag {
+  color: var(--accent-light);
+  font-weight: 600;
+}
+
+/* ============================================
+   OPTIONS AND BAR COMPARISON
+   ============================================ */
+
+.options-votes-distribution {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: var(--radius-md);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.distribution-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.distribution-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.88rem;
+  font-weight: 500;
+}
+
+.dist-opt-text {
+  color: var(--text-secondary);
+}
+
+.dist-pct-text {
+  font-family: monospace;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.distribution-bar-comparison {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dist-bar {
+  height: 6px;
+  border-radius: 3px;
+  transition: width 0.8s ease;
+}
+
+.ai-bar {
+  background: linear-gradient(90deg, var(--accent), var(--accent-light));
+  opacity: 0.85;
+}
+
+.comm-bar {
+  background: linear-gradient(90deg, #10b981, #34d399);
+}
+
+/* ============================================
+   ANIMATIONS & RESPONSIVE
+   ============================================ */
+
+@media (max-width: 640px) {
+  .ai-dashboard-container {
+    padding: 32px 16px 60px;
+  }
+
+  .history-card-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .accuracy-badge {
+    margin-top: 8px;
+  }
+}

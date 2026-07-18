@@ -1,5 +1,6 @@
 import React, { useContext } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useUser } from '@clerk/clerk-react';
 import { AuthContext } from '../context/AuthContext';
 import '../styles/Navbar.css';
 
@@ -7,6 +8,7 @@ function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useContext(AuthContext);
+  const { user: clerkUser } = useUser();
 
   const handleLogout = async () => {
     await logout();
@@ -33,6 +35,18 @@ function Navbar() {
           >
             Polls
           </Link>
+          <Link
+            to="/ai-dashboard"
+            className={`nav-link ${location.pathname === '/ai-dashboard' ? 'active' : ''}`}
+          >
+            🤖 AI Performance
+          </Link>
+          <Link
+            to="/leaderboard"
+            className={`nav-link ${location.pathname === '/leaderboard' ? 'active' : ''}`}
+          >
+            🏆 Leaderboard
+          </Link>
           {user?.isAdmin && (
             <Link
               to="/create"
@@ -54,7 +68,16 @@ function Navbar() {
               <div className="nav-credits">
                 <span className="credits-badge">🪙 {user.credits || 0} Credits</span>
               </div>
-              <span className="nav-user-email">{user.name || user.email}</span>
+              {clerkUser?.imageUrl ? (
+                <img
+                  src={clerkUser.imageUrl}
+                  alt={user.name || user.email}
+                  title={user.name || user.email}
+                  className="nav-user-avatar"
+                />
+              ) : (
+                <span className="nav-user-email">{user.name || user.email}</span>
+              )}
               <button onClick={handleLogout} className="nav-link text-btn" style={{ color: '#ef4444' }}>
                 Logout
               </button>

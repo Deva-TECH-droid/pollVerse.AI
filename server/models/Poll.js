@@ -39,6 +39,10 @@ const pollSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
+  shares: {
+    type: Number,
+    default: 0,
+  },
   durationHours: {
     type: Number,
     default: 12,
@@ -65,6 +69,38 @@ const pollSchema = new mongoose.Schema({
   aiInsight: {
     type: String,
     default: '',
+  },
+  aiPrediction: {
+    predictedOptionIndex: {
+      type: Number,
+      default: null,
+    },
+    probabilities: {
+      type: [Number],
+      default: [],
+    },
+    confidenceLevel: {
+      type: String,
+      default: '',
+    },
+    confidenceScore: {
+      type: Number,
+      default: null,
+    },
+    explainableAI: {
+      type: [String],
+      default: [],
+    },
+    comparisonStats: [
+      {
+        metric: String,
+        values: [String],
+      },
+    ],
+    isCorrect: {
+      type: Boolean,
+      default: null,
+    },
   },
   createdBy: {
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },

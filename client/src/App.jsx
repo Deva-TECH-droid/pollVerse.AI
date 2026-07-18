@@ -8,6 +8,8 @@ import CreatePage from './pages/CreatePage';
 import AuthPage from './pages/AuthPage';
 import RewardClaimPage from './pages/RewardClaimPage';
 import FeedbackPage from './pages/FeedbackPage';
+import AIDashboardPage from './pages/AIDashboardPage';
+import LeaderboardPage from './pages/LeaderboardPage';
 import { AuthProvider } from './context/AuthContext';
 import { Toaster } from 'react-hot-toast';
 
@@ -26,6 +28,8 @@ function App() {
             <Route path="/create" element={<CreatePage />} />
             <Route path="/reward/claim" element={<RewardClaimPage />} />
             <Route path="/feedback" element={<FeedbackPage />} />
+            <Route path="/ai-dashboard" element={<AIDashboardPage />} />
+            <Route path="/leaderboard" element={<LeaderboardPage />} />
           </Routes>
         </main>
       </Router>

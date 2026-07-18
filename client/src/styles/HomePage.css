@@ -54,6 +54,13 @@
   animation-delay: 0.1s;
 }
 
+.latest-polls-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 16px;
+}
+
 /* ============================================
    POLL CARD
    ============================================ */
@@ -106,7 +113,7 @@
 .poll-card-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 10px;
 }
 
 .poll-card-badge {
@@ -123,6 +130,37 @@
 .poll-card-date {
   font-size: 0.75rem;
   color: var(--text-muted);
+  margin-left: auto;
+}
+
+.poll-card-delete-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  line-height: 1;
+  color: var(--text-muted);
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity var(--transition), background var(--transition), border-color var(--transition), transform var(--transition);
+}
+
+.poll-card-delete-btn:hover {
+  opacity: 1;
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.35);
+  transform: scale(1.08);
+}
+
+.poll-card-delete-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
 }
 
 /* Question */

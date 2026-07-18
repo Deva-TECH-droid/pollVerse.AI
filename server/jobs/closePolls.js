@@ -6,6 +6,7 @@ const { sendWinnerEmail, sendMilestoneEmail } = require('../utils/email');
 const { generatePollInsight } = require('../utils/aiInsight');
 
 const MILESTONE_CREDITS = Number(process.env.MILESTONE_CREDITS) || 200;
+const PREDICTION_REWARD = 20; // credits awarded for a correct prediction
 
 async function closeAndRewardPoll(poll) {
   poll.isClosed = true;
@@ -18,6 +19,11 @@ async function closeAndRewardPoll(poll) {
   const hasVotes = poll.totalVotes > 0;
   poll.winningOptionIndex = hasVotes ? winningIndex : null;
   poll.rewardsProcessed = true;
+
+  // Set AI accuracy status
+  if (poll.aiPrediction && typeof poll.aiPrediction.predictedOptionIndex === 'number') {
+    poll.aiPrediction.isCorrect = hasVotes && (poll.winningOptionIndex === poll.aiPrediction.predictedOptionIndex);
+  }
 
   try {
     poll.aiInsight = await generatePollInsight(poll);
@@ -48,6 +54,12 @@ async function closeAndRewardPoll(poll) {
       user.credits += poll.rewardPoints;
       user.totalWins += 1;
       user.totalPredictions += 1;
+      // ---- Prediction accuracy tracking ----
+      user.credits += PREDICTION_REWARD; // bonus for correct prediction
+      user.correctPredictions = (user.correctPredictions || 0) + 1;
+      user.predictionAccuracy = Math.round(
+        (user.correctPredictions / user.totalPredictions) * 100
+      );
       await user.save();
 
       await sendWinnerEmail({
@@ -81,7 +93,14 @@ async function closeAndRewardPoll(poll) {
   });
   for (const vote of losingVotes) {
     try {
-      await User.findByIdAndUpdate(vote.userId, { $inc: { totalPredictions: 1 } });
+      const user = await User.findById(vote.userId);
+      if (!user) continue;
+      user.totalPredictions = (user.totalPredictions || 0) + 1;
+      // accuracy decreases naturally since correctPredictions doesn't change
+      user.predictionAccuracy = user.totalPredictions > 0
+        ? Math.round(((user.correctPredictions || 0) / user.totalPredictions) * 100)
+        : 0;
+      await user.save();
     } catch (err) {
       console.error(`Failed to update prediction tally for voter ${vote.userId}:`, err);
     }

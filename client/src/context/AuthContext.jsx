@@ -19,13 +19,18 @@ export const AuthProvider = ({ children }) => {
   const syncUser = useCallback(async () => {
     try {
       const authToken = await getToken();
+      console.log('🔑 Clerk token from getToken():', authToken ? `${authToken.slice(0, 20)}... (length ${authToken.length})` : authToken);
       setToken(authToken);
 
       const res = await fetch(`${API_URL}/api/auth/sync`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${authToken}` },
       });
-      if (!res.ok) throw new Error('Failed to sync user with server');
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}));
+        console.error('Sync failed, server said:', errBody);
+        throw new Error('Failed to sync user with server');
+      }
 
       const data = await res.json();
       setMongoUser(data.user);

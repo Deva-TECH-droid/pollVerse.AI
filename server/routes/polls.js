@@ -1,11 +1,14 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const Poll = require('../models/Poll');
 const Vote = require('../models/Vote');
 const User = require('../models/User');
+const Comment = require('../models/Comment');
 const { requireAuth } = require('../middleware/auth');
 const { sendNewPollEmail } = require('../utils/email');
 const { getDisplayName } = require('../utils/displayName');
+const { generateAIPrediction } = require('../utils/aiInsight');
 
 const DEFAULT_DURATION_HOURS = Number(process.env.POLL_DURATION_HOURS) || 12;
 const DEFAULT_REWARD_POINTS = Number(process.env.POLL_REWARD_POINTS) || 20;
@@ -109,14 +112,139 @@ router.post('/', requireAuth, requireAdmin, async (req, res) => {
       },
     });
 
+    // Generate AI Prediction
+    try {
+      poll.aiPrediction = await generateAIPrediction(poll);
+    } catch (err) {
+      console.error('❌ Failed to generate initial AI prediction:', err);
+    }
+
     await poll.save();
-    console.log(`✅ Poll created: "${poll.question}" (${poll._id}) by ${req.user.email}`);
+    console.log(`✅ Poll created with AI Prediction: "${poll.question}" (${poll._id}) by ${req.user.email}`);
 
     notifyUsersAboutNewPoll(poll, req.user).catch((err) => {
       console.error('❌ notifyUsersAboutNewPoll threw an uncaught error:', err);
     });
 
     res.status(201).json(poll);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+router.get('/ai/dashboard-stats', async (req, res) => {
+  try {
+    const closedPolls = await Poll.find({
+      isClosed: true,
+      'aiPrediction.predictedOptionIndex': { $ne: null }
+    }).sort({ closesAt: -1 });
+
+    let totalPredictions = closedPolls.length;
+    let correctPredictions = 0;
+    let confidenceSum = 0;
+
+    closedPolls.forEach(poll => {
+      if (poll.aiPrediction && poll.aiPrediction.isCorrect) {
+        correctPredictions++;
+      }
+      const score = poll.aiPrediction?.confidenceScore;
+      if (score) {
+        confidenceSum += score;
+      } else if (poll.aiPrediction?.confidenceLevel) {
+        const confMap = { "High": 85, "Medium": 60, "Low": 35 };
+        confidenceSum += confMap[poll.aiPrediction.confidenceLevel] || 50;
+      }
+    });
+
+    const accuracy = totalPredictions > 0 ? Math.round((correctPredictions / totalPredictions) * 100) : 0;
+    const avgConfidence = totalPredictions > 0 ? Math.round(confidenceSum / totalPredictions) : 0;
+
+    res.json({
+      totalPredictions,
+      correctPredictions,
+      accuracy,
+      avgConfidence,
+      history: closedPolls.map(p => ({
+        _id: p._id,
+        question: p.question,
+        options: p.options.map(o => ({ text: o.text, votes: o.votes })),
+        predictedWinner: p.options[p.aiPrediction.predictedOptionIndex]?.text || 'N/A',
+        actualWinner: p.winningOptionIndex !== null ? p.options[p.winningOptionIndex]?.text : 'Draw/None',
+        probabilities: p.aiPrediction.probabilities,
+        predictedOptionIndex: p.aiPrediction.predictedOptionIndex,
+        winningOptionIndex: p.winningOptionIndex,
+        isCorrect: p.aiPrediction.isCorrect,
+        closesAt: p.closesAt,
+        confidenceLevel: p.aiPrediction.confidenceLevel,
+        confidenceScore: p.aiPrediction.confidenceScore
+      }))
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// Combined trending data for the homepage: Most Voted, Ending Soon, Trending Today.
+// Must stay ABOVE the `/:id` route below, or Express will try to treat
+// "trending" itself as a poll id and 404/error out.
+router.get('/trending', async (req, res) => {
+  try {
+    const now = new Date();
+    const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000);
+
+    // 🔥 Most Voted — top active polls by total votes.
+    const mostVoted = await Poll.find({ isClosed: false })
+      .sort({ totalVotes: -1 })
+      .limit(10);
+
+    // ⏳ Ending Soon — active polls closing within the next hour.
+    const endingSoon = await Poll.find({
+      isClosed: false,
+      closesAt: { $gt: now, $lte: oneHourFromNow },
+    }).sort({ closesAt: 1 });
+
+    // 📈 Trending Today — score = (new votes today × 2) + (comments × 1)
+    // + (unique participants × 2) + (shares × 3).
+    // "New votes today" is derived from each Vote's _id, since MongoDB
+    // ObjectIds embed their creation time — no extra timestamp field needed.
+    const startOfToday = new Date(now);
+    startOfToday.setHours(0, 0, 0, 0);
+    const todayThresholdId = mongoose.Types.ObjectId.createFromTime(startOfToday.getTime() / 1000);
+
+    const activePolls = await Poll.find({ isClosed: false });
+
+    const scored = await Promise.all(
+      activePolls.map(async (poll) => {
+        const [votesToday, commentCount] = await Promise.all([
+          Vote.countDocuments({ pollId: poll._id, _id: { $gte: todayThresholdId } }),
+          Comment.countDocuments({ pollId: poll._id }),
+        ]);
+        // Every vote is from a unique user (one vote per user is enforced
+        // elsewhere), so totalVotes doubles as the unique-participants count.
+        const uniqueParticipants = poll.totalVotes;
+        const score = votesToday * 2 + commentCount * 1 + uniqueParticipants * 2 + poll.shares * 3;
+        return { poll, score, votesToday };
+      })
+    );
+
+    const trendingToday = scored
+      .filter((s) => s.votesToday > 0) // only show polls with actual activity today
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 10)
+      .map((s) => ({ ...s.poll.toObject(), trendingScore: s.score, votesToday: s.votesToday }));
+
+    res.json({ mostVoted, endingSoon, trendingToday });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// Increment a poll's share counter (feeds into the Trending Today score).
+router.post('/:id/share', async (req, res) => {
+  try {
+    const poll = await Poll.findByIdAndUpdate(req.params.id, { $inc: { shares: 1 } }, { new: true });
+    if (!poll) return res.status(404).json({ message: 'Poll not found' });
+    res.json({ shares: poll.shares });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }

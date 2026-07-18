@@ -4,6 +4,8 @@ import { useAuth } from '@clerk/clerk-react';
 import socket from '../socket';
 import { AuthContext } from '../context/AuthContext';
 import Confetti from '../components/Confetti';
+import Discussion from '../components/Discussion';
+import AIPredictionCard from '../components/AIPredictionCard';
 import '../styles/PollPage.css';
 
 const API_URL = process.env.REACT_APP_API_URL || '';
@@ -130,6 +132,22 @@ function PollPage() {
     return Math.round((votes / poll.totalVotes) * 100);
   };
 
+  const [shareCopied, setShareCopied] = useState(false);
+  const handleShare = async () => {
+    try {
+      await fetch(`${API_URL}/api/polls/${id}/share`, { method: 'POST' });
+    } catch (err) {
+      console.error('Share tracking failed:', err);
+    }
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 2000);
+    } catch (err) {
+      alert('Could not copy link — copy it manually from the address bar.');
+    }
+  };
+
   if (loading) {
     return (
       <div className="poll-page-container">
@@ -170,9 +188,14 @@ function PollPage() {
       )}
 
       <div className="poll-wrapper">
-        <button className="back-btn" onClick={() => navigate('/polls')}>
-          ← Back
-        </button>
+        <div className="poll-page-topbar">
+          <button className="back-btn" onClick={() => navigate('/polls')}>
+            ← Back
+          </button>
+          <button className="share-btn" onClick={handleShare}>
+            {shareCopied ? '✅ Link Copied' : '🔗 Share'}
+          </button>
+        </div>
 
         <div className="poll-header">
           <div className={`poll-live-badge ${poll.isClosed ? 'closed' : ''}`}>
@@ -202,6 +225,8 @@ function PollPage() {
             ))}
           </div>
         )}
+
+        {poll.aiPrediction && <AIPredictionCard poll={poll} />}
 
         <div className="poll-options">
           {poll.options.map((option, index) => {
@@ -284,6 +309,8 @@ function PollPage() {
         {poll.isClosed && voted && votedIndex !== winningIndex && (
           <p className="vote-prompt">This poll has closed. Your prediction didn't match the winning option this time.</p>
         )}
+
+        <Discussion pollId={id} user={user} voted={voted} />
       </div>
     </div>
   );

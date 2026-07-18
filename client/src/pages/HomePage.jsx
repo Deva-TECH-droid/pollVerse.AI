@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import PollCard from '../components/PollCard';
+import TrendingPolls from '../components/TrendingPolls';
 import '../styles/HomePage.css';
 
 const API_URL = process.env.REACT_APP_API_URL || '';
@@ -24,6 +25,10 @@ function HomePage() {
     };
     fetchPolls();
   }, []);
+
+  const handlePollDeleted = (deletedId) => {
+    setPolls((prev) => prev.filter((p) => p._id !== deletedId));
+  };
 
   if (loading) {
     return (
@@ -58,6 +63,8 @@ function HomePage() {
         </p>
       </div>
 
+      <TrendingPolls />
+
       {polls.length === 0 ? (
         <div className="empty-state">
           <div className="empty-icon">🗳️</div>
@@ -65,11 +72,14 @@ function HomePage() {
           <p>Be the first to create a poll!</p>
         </div>
       ) : (
-        <div className="polls-grid">
-          {polls.map((poll) => (
-            <PollCard key={poll._id} poll={poll} />
-          ))}
-        </div>
+        <>
+          <h2 className="latest-polls-title">🗳 Latest Polls</h2>
+          <div className="polls-grid">
+            {polls.map((poll) => (
+              <PollCard key={poll._id} poll={poll} onDeleted={handlePollDeleted} />
+            ))}
+          </div>
+        </>
       )}
     </div>
   );

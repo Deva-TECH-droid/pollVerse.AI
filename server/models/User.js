@@ -30,6 +30,14 @@ const UserSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
+  correctPredictions: {
+    type: Number,
+    default: 0,
+  },
+  predictionAccuracy: {
+    type: Number,
+    default: 0,
+  },
   rewardClaimed: {
     type: Boolean,
     default: false,

@@ -11,6 +11,7 @@ const authRoutes = require('./routes/auth');
 const webhookRoutes = require('./routes/webhooks');
 const rewardRoutes = require('./routes/rewards');
 const feedbackRoutes = require('./routes/Feedback');
+const leaderboardRoutes = require('./routes/leaderboard');
 const { verifySocketUser } = require('./middleware/auth');
 const { startPollCloseJob } = require('./jobs/closePolls');
 const Poll = require('./models/Poll');
@@ -27,7 +28,8 @@ const isProduction = process.env.NODE_ENV === 'production';
 // Allowed origins: Vercel frontend in prod, localhost in dev
 const allowedOrigins = isProduction
   ? [process.env.CLIENT_URL, 'https://livepollverse.vercel.app'].filter(Boolean)
-  : ['http://localhost:3000'];
+  : ['http://localhost:3000', 'http://localhost:3001'];
+
 
 // Socket.io with CORS
 const io = new Server(httpServer, {
@@ -36,11 +38,12 @@ const io = new Server(httpServer, {
     methods: ['GET', 'POST'],
   },
 });
+app.set('io', io);
 
 // Middleware
-app.use(cors({ 
+app.use(cors({
   origin: allowedOrigins,
-  credentials: true 
+  credentials: true
 }));
 
 // Clerk webhook needs the RAW body to verify its signature, so it's mounted
@@ -48,13 +51,24 @@ app.use(cors({
 app.use('/api/webhooks', express.raw({ type: 'application/json' }), webhookRoutes);
 
 app.use(express.json());
-app.use(clerkMiddleware()); // populates req.auth for every request
+// authorizedParties tells Clerk which frontend origins are allowed to
+// send session tokens — must match the `azp` claim in the JWT.
+const authorizedParties = [
+  'http://localhost:3000',
+  'http://localhost:3001',
+  process.env.CLIENT_URL,
+  'https://livepollverse.vercel.app',
+  'https://poll-verse-ai-d2f3.vercel.app',
+].filter(Boolean);
 
+app.use(clerkMiddleware({ clockSkewInMs: 30000 }));
 // REST Routes
 app.use('/api/polls', pollRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/rewards', rewardRoutes);
 app.use('/api/feedback', feedbackRoutes);
+app.use('/api/leaderboard', leaderboardRoutes);
+app.use('/api/comments', require('./routes/comments'));
 
 // Health check endpoint
 app.get('/', (req, res) => {

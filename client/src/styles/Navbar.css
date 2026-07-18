@@ -112,6 +112,21 @@
   white-space: nowrap;
 }
 
+.nav-user-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--border);
+  cursor: pointer;
+  transition: border-color var(--transition), transform var(--transition);
+}
+
+.nav-user-avatar:hover {
+  border-color: var(--accent);
+  transform: scale(1.06);
+}
+
 @media (max-width: 480px) {
   .navbar-container {
     padding: 0 16px;
