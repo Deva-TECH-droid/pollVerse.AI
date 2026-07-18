@@ -45,7 +45,7 @@ function AIPredictionCard({ poll }) {
 
   const predictedIndex = aiPrediction.predictedOptionIndex;
   const probabilities = options.map((_, i) => aiPrediction.probabilities?.[i] || 0);
-  const topTwo = [...probabilities].sort((a, b) => b - a).slice(0, 2);
+//   const topTwo = [...probabilities].sort((a, b) => b - a).slice(0, 2);
   const meterLeftPct = probabilities[0] || 0;
 
   return (

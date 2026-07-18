@@ -111,7 +111,7 @@ export default function LeaderboardPage() {
   }
 
   const top3 = leaderboard.slice(0, 3);
-  const rest = leaderboard.slice(3);
+  // const rest = leaderboard.slice(3);
 
   return (
     <div className="lb-container">
