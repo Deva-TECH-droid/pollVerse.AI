@@ -38,6 +38,9 @@ const io = new Server(httpServer, {
     methods: ['GET', 'POST'],
   },
 });
+
+// Expose io on the app so route handlers (e.g. routes/comments.js) can grab
+// it via req.app.get('io') and broadcast to a poll's room.
 app.set('io', io);
 
 // Middleware
@@ -57,8 +60,7 @@ const authorizedParties = [
   'http://localhost:3000',
   'http://localhost:3001',
   process.env.CLIENT_URL,
-  'https://livepollverse.vercel.app',
-  'https://poll-verse-ai-d2f3.vercel.app',
+  'https://poll-verse-ai-delta.vercel.app',
 ].filter(Boolean);
 
 app.use(clerkMiddleware({ clockSkewInMs: 30000 }));
@@ -69,6 +71,8 @@ app.use('/api/rewards', rewardRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/comments', require('./routes/comments'));
+app.use('/api/admin', require('./routes/admin'));
+app.use('/api/gully-cricket', require('./routes/gullyCricket'));
 
 // Health check endpoint
 app.get('/', (req, res) => {
