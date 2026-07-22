@@ -1,0 +1,506 @@
+/* ============================================
+   GULLY CRICKET — CricHeroes-inspired styling
+   ============================================ */
+
+.gc-container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 48px 24px 80px;
+}
+
+/* Hero */
+.gc-hero {
+  text-align: center;
+  margin-bottom: 40px;
+  position: relative;
+  padding: 40px 24px;
+  border-radius: var(--radius-lg);
+  background: radial-gradient(ellipse at top, rgba(34, 197, 94, 0.15), transparent 65%), var(--bg-secondary);
+  border: 1px solid rgba(34, 197, 94, 0.25);
+  overflow: hidden;
+}
+
+.gc-hero::before {
+  content: '🏏';
+  position: absolute;
+  font-size: 8rem;
+  opacity: 0.05;
+  right: -10px;
+  top: -20px;
+  transform: rotate(20deg);
+}
+
+.gc-title {
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+  font-weight: 900;
+  color: var(--text-primary);
+  margin-bottom: 10px;
+  position: relative;
+}
+
+.gc-accent {
+  color: #22c55e;
+  text-shadow: 0 0 24px rgba(34, 197, 94, 0.5);
+}
+
+.gc-subtitle {
+  color: var(--text-secondary);
+  font-size: 1rem;
+  max-width: 480px;
+  margin: 0 auto 24px;
+  position: relative;
+}
+
+.gc-cta-link {
+  display: inline-block;
+  text-decoration: none;
+}
+
+.gc-hero-links {
+  margin-top: 14px;
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+}
+
+.gc-hero-links a {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.gc-hero-links a:hover {
+  color: #22c55e;
+}
+
+/* Buttons */
+.gc-submit-btn {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: #052e10;
+  border: none;
+  border-radius: 999px;
+  padding: 13px 28px;
+  font-weight: 800;
+  font-size: 0.95rem;
+  cursor: pointer;
+  align-self: flex-start;
+  box-shadow: 0 4px 20px rgba(34, 197, 94, 0.4);
+  transition: transform var(--transition), box-shadow var(--transition);
+}
+
+.gc-submit-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(34, 197, 94, 0.55);
+}
+
+.gc-submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.gc-error {
+  color: #ef4444;
+  font-size: 0.85rem;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+}
+
+.gc-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin-bottom: 20px;
+  text-decoration: none;
+}
+
+.gc-back-link:hover {
+  color: var(--text-primary);
+}
+
+.gc-placeholder {
+  background: var(--bg-secondary);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.gc-chart-empty {
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* ============================================
+   FORM
+   ============================================ */
+
+.gc-form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  text-align: left;
+}
+
+.gc-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.gc-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gc-field-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.gc-form input[type="text"],
+.gc-form input[type="number"],
+.gc-form select {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 11px 14px;
+  color: var(--text-primary);
+  font-size: 0.92rem;
+}
+
+.gc-form input:focus,
+.gc-form select:focus {
+  outline: none;
+  border-color: #22c55e;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15);
+}
+
+/* Player editor */
+.gc-player-editor {
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+}
+
+.gc-player-input-row {
+  display: flex;
+  gap: 8px;
+}
+
+.gc-player-input-row input {
+  flex: 1;
+  background: var(--bg-secondary);
+}
+
+.gc-player-input-row button {
+  background: #22c55e;
+  color: #052e10;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 0 16px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.gc-player-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.gc-player-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 6px 6px 14px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.gc-player-chip button {
+  background: rgba(239, 68, 68, 0.15);
+  border: none;
+  color: #ef4444;
+  cursor: pointer;
+  font-size: 0.7rem;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gc-player-chip-static {
+  padding: 8px 14px;
+}
+
+/* Overs presets */
+.gc-overs-presets {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.gc-preset-btn {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 9px 20px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.gc-preset-btn.active {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  border-color: #22c55e;
+  color: #052e10;
+  box-shadow: 0 2px 12px rgba(34, 197, 94, 0.35);
+}
+
+.gc-custom-overs-input {
+  width: 100px;
+}
+
+/* Toss picker — CricHeroes-style toggle cards */
+.gc-toss-section {
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.gc-toss-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.gc-toss-card {
+  background: var(--bg-secondary);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  text-align: center;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  transition: all var(--transition);
+}
+
+.gc-toss-card.active {
+  border-color: #22c55e;
+  background: rgba(34, 197, 94, 0.12);
+  color: #22c55e;
+}
+
+/* ============================================
+   MATCH LIST (hub page)
+   ============================================ */
+
+.gc-match-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  text-align: left;
+}
+
+.gc-match-card {
+  display: block;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-left: 4px solid #22c55e;
+  border-radius: var(--radius-lg);
+  padding: 18px 22px;
+  text-decoration: none;
+  transition: border-color var(--transition), transform var(--transition), box-shadow var(--transition);
+  position: relative;
+}
+
+.gc-match-card:hover {
+  border-color: #22c55e;
+  transform: translateX(4px);
+  box-shadow: 0 4px 24px rgba(34, 197, 94, 0.15);
+}
+
+.gc-match-status {
+  position: absolute;
+  top: 18px;
+  right: 22px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 4px 12px;
+  border-radius: 999px;
+}
+
+.gc-match-status-created {
+  background: rgba(108, 99, 255, 0.15);
+  color: #a78bfa;
+}
+
+.gc-match-status-live {
+  background: rgba(239, 68, 68, 0.18);
+  color: #ef4444;
+  animation: gcLivePulse 1.6s ease-in-out infinite;
+}
+
+@keyframes gcLivePulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.35); }
+  50% { box-shadow: 0 0 0 5px rgba(239, 68, 68, 0); }
+}
+
+.gc-match-status-completed {
+  background: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+}
+
+.gc-match-teams-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.gc-team-badge {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 0.8rem;
+  color: #fff;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+}
+
+.gc-team-badge-b {
+  background: linear-gradient(135deg, #6c63ff, #4c46b6);
+}
+
+.gc-match-vs {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.gc-match-teams {
+  font-weight: 800;
+  color: var(--text-primary);
+  font-size: 1.02rem;
+}
+
+.gc-match-meta {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  padding-left: 46px;
+}
+
+/* ============================================
+   MATCH DETAIL PAGE
+   ============================================ */
+
+.gc-match-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+  text-align: left;
+}
+
+.gc-team-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px 22px;
+}
+
+.gc-team-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.gc-team-card-title {
+  font-weight: 800;
+  color: var(--text-primary);
+  font-size: 1rem;
+}
+
+.gc-team-card-role {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.gc-player-avatar-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.gc-player-avatar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-tertiary);
+  border-radius: 999px;
+  padding: 6px 12px 6px 6px;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+.gc-player-avatar-circle {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 600px) {
+  .gc-form-row,
+  .gc-match-info-grid,
+  .gc-toss-options {
+    grid-template-columns: 1fr;
+  }
+
+  .gc-match-meta {
+    padding-left: 0;
+  }
+}

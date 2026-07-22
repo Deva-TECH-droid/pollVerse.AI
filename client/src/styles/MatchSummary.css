@@ -1,0 +1,277 @@
+/* Awards */
+.ms-awards-section {
+  margin-bottom: 32px;
+}
+
+.ms-awards-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.ms-awards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+}
+
+.ms-award-card {
+  background: linear-gradient(160deg, rgba(34, 197, 94, 0.08), var(--bg-secondary));
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  text-align: center;
+}
+
+.ms-award-icon {
+  font-size: 1.6rem;
+}
+
+.ms-award-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 8px;
+}
+
+.ms-award-name {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-top: 4px;
+}
+
+.ms-award-stat {
+  font-size: 0.75rem;
+  color: #22c55e;
+  margin-top: 2px;
+}
+
+/* Innings block */
+.ms-innings-block {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.ms-innings-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.ms-innings-header h2 {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.ms-innings-score {
+  font-size: 1.3rem;
+  font-weight: 900;
+  color: #22c55e;
+}
+
+.ms-innings-score span {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* Tables */
+.ms-table-wrap {
+  overflow-x: auto;
+  margin-bottom: 16px;
+}
+
+.ms-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.ms-table th {
+  text-align: left;
+  color: var(--text-muted);
+  font-weight: 700;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.ms-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+
+.ms-num {
+  text-align: right;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.ms-batter-name {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.ms-out-type {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.ms-extras-line {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+.ms-section-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 16px 0 10px;
+}
+
+.ms-fow-line {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.ms-partnerships {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ms-partnership-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.ms-partnership-runs {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.ms-run-rate-chart {
+  width: 100%;
+  height: 100px;
+}
+
+/* Wagon Wheel */
+.ms-wagon-wheel-wrap {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+.ms-wagon-wheel-svg {
+  width: 220px;
+  height: 220px;
+  flex-shrink: 0;
+}
+
+.ms-wagon-legend {
+  flex: 1;
+  min-width: 200px;
+}
+
+.ms-wagon-side-split {
+  display: flex;
+  gap: 20px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+}
+
+.ms-wagon-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.ms-wagon-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+/* Worm graph */
+.ms-worm-graph-svg {
+  width: 100%;
+  height: 140px;
+}
+
+.ms-worm-legend {
+  display: flex;
+  gap: 20px;
+  margin-top: 8px;
+}
+
+.ms-worm-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+/* Highest partnership highlight */
+.ms-partnership-highest {
+  background: rgba(34, 197, 94, 0.08);
+  border-radius: var(--radius-sm);
+  padding-left: 8px;
+  padding-right: 8px;
+  color: #22c55e;
+  font-weight: 700;
+}
+
+/* Commentary feed */
+.ms-commentary-feed {
+  max-height: 280px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ms-commentary-row {
+  display: flex;
+  gap: 10px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.ms-commentary-label {
+  flex-shrink: 0;
+  font-weight: 700;
+  color: var(--text-muted);
+  min-width: 34px;
+}

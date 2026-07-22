@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import React, { useContext, useState, useRef, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useUser } from '@clerk/clerk-react';
 import { AuthContext } from '../context/AuthContext';
@@ -9,8 +9,25 @@ function Navbar() {
   const navigate = useNavigate();
   const { user, logout } = useContext(AuthContext);
   const { user: clerkUser } = useUser();
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    setShowDropdown(false);
+  }, [location.pathname]);
 
   const handleLogout = async () => {
+    setShowDropdown(false);
     await logout();
     navigate('/');
   };
@@ -23,12 +40,14 @@ function Navbar() {
           LivePoll
         </Link>
         <div className="navbar-links">
-          <Link
-            to="/"
-            className={`nav-link ${location.pathname === '/' ? 'active' : ''}`}
-          >
-            Home
-          </Link>
+          {!user && (
+            <Link
+              to="/"
+              className={`nav-link ${location.pathname === '/' ? 'active' : ''}`}
+            >
+              Home
+            </Link>
+          )}
           <Link
             to="/polls"
             className={`nav-link ${location.pathname === '/polls' ? 'active' : ''}`}
@@ -68,19 +87,38 @@ function Navbar() {
               <div className="nav-credits">
                 <span className="credits-badge">🪙 {user.credits || 0} Credits</span>
               </div>
-              {clerkUser?.imageUrl ? (
-                <img
-                  src={clerkUser.imageUrl}
-                  alt={user.name || user.email}
-                  title={user.name || user.email}
-                  className="nav-user-avatar"
-                />
-              ) : (
-                <span className="nav-user-email">{user.name || user.email}</span>
-              )}
-              <button onClick={handleLogout} className="nav-link text-btn" style={{ color: '#ef4444' }}>
-                Logout
-              </button>
+              <div className="nav-avatar-dropdown-wrap" ref={dropdownRef}>
+                {clerkUser?.imageUrl ? (
+                  <img
+                    src={clerkUser.imageUrl}
+                    alt={user.name || user.email}
+                    title={user.name || user.email}
+                    className="nav-user-avatar"
+                    onClick={() => setShowDropdown((s) => !s)}
+                  />
+                ) : (
+                  <span className="nav-user-email" onClick={() => setShowDropdown((s) => !s)} style={{ cursor: 'pointer' }}>
+                    {user.name || user.email}
+                  </span>
+                )}
+
+                {showDropdown && (
+                  <div className="nav-dropdown-menu">
+                    {user.isAdmin && (
+                      <Link to="/admin/analytics" className="nav-dropdown-item" onClick={() => setShowDropdown(false)}>
+                        📊 Admin Analytics
+                      </Link>
+                    )}
+                    <Link to="/gully-cricket" className="nav-dropdown-item" onClick={() => setShowDropdown(false)}>
+                      🏏 Score
+                    </Link>
+                    <div className="nav-dropdown-divider" />
+                    <button onClick={handleLogout} className="nav-dropdown-item nav-dropdown-item-danger">
+                      🚪 Logout
+                    </button>
+                  </div>
+                )}
+              </div>
             </>
           ) : (
             <Link to="/login" className="nav-link nav-link-cta" state={{ from: location }}>

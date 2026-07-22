@@ -1,0 +1,431 @@
+/* Scoreboard */
+.ls-scoreboard {
+  background: linear-gradient(160deg, #1a1a2e, #0f0f1e);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  border-radius: var(--radius-lg);
+  padding: 28px 24px;
+  text-align: center;
+  margin-bottom: 20px;
+  box-shadow: 0 0 40px rgba(34, 197, 94, 0.15);
+  position: relative;
+  overflow: hidden;
+}
+
+.ls-scoreboard::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 0%, rgba(34, 197, 94, 0.12), transparent 60%);
+  pointer-events: none;
+}
+
+.ls-score-team {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.ls-score-main {
+  font-size: 2.6rem;
+  font-weight: 900;
+  color: #fff;
+}
+
+.ls-score-overs {
+  font-size: 1.1rem;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 500;
+}
+
+.ls-target-line {
+  font-size: 0.85rem;
+  color: #f59e0b;
+  margin-top: 6px;
+  font-weight: 600;
+}
+
+.ls-recent-balls {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+
+.ls-ball-chip {
+  min-width: 28px;
+  height: 28px;
+  padding: 0 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ls-ball-boundary {
+  background: rgba(34, 197, 94, 0.3);
+  color: #4ade80;
+}
+
+.ls-ball-wicket {
+  background: rgba(239, 68, 68, 0.35);
+  color: #fca5a5;
+}
+
+/* Batters + bowler row */
+.ls-batters-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.ls-batter-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  transition: border-color var(--transition);
+}
+
+.ls-batter-card:first-child {
+  border-color: rgba(34, 197, 94, 0.4);
+  background: linear-gradient(160deg, rgba(34, 197, 94, 0.08), var(--bg-secondary));
+}
+
+.ls-bowler-card {
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.ls-batter-name {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ls-batter-stats {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* Scoring pad */
+.ls-scoring-pad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.ls-run-btn {
+  background: var(--bg-secondary);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.ls-run-btn:hover:not(:disabled) {
+  border-color: #22c55e;
+  background: rgba(34, 197, 94, 0.1);
+}
+
+.ls-run-btn-boundary {
+  color: #22c55e;
+  border-color: rgba(34, 197, 94, 0.4);
+}
+
+.ls-extra-btn {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.ls-extra-btn:hover:not(:disabled) {
+  border-color: #f59e0b;
+  color: #f59e0b;
+}
+
+.ls-wicket-btn {
+  grid-column: span 3;
+  background: linear-gradient(135deg, #ef4444, #b91c1c);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  font-size: 1rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(239, 68, 68, 0.4);
+}
+
+.ls-run-btn:disabled,
+.ls-extra-btn:disabled,
+.ls-wicket-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Result banner */
+.ls-result-banner {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(34, 197, 94, 0.05));
+  border: 1px solid rgba(34, 197, 94, 0.4);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  text-align: center;
+  font-weight: 800;
+  font-size: 1.1rem;
+  color: #22c55e;
+  margin-bottom: 20px;
+}
+
+/* Modals */
+.ls-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.ls-modal {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.ls-modal h3 {
+  color: var(--text-primary);
+  font-size: 1.05rem;
+}
+
+.ls-modal select {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  color: var(--text-primary);
+  width: 100%;
+}
+
+.ls-modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+/* Marquee target banner */
+.ls-marquee-banner {
+  background: linear-gradient(90deg, #b91c1c, #ef4444, #b91c1c);
+  background-size: 200% 100%;
+  animation: lsMarqueeGlow 3s ease-in-out infinite;
+  border-radius: var(--radius-sm);
+  padding: 10px 0;
+  margin-bottom: 16px;
+  overflow: hidden;
+  white-space: nowrap;
+  box-shadow: 0 4px 20px rgba(239, 68, 68, 0.4);
+}
+
+@keyframes lsMarqueeGlow {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+.ls-marquee-track {
+  display: inline-block;
+  animation: lsMarqueeScroll 14s linear infinite;
+}
+
+.ls-marquee-track span {
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.95rem;
+  letter-spacing: 0.5px;
+  padding-right: 40px;
+}
+
+@keyframes lsMarqueeScroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+/* Previous innings scorecard */
+.ls-prev-innings-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px 22px;
+  margin-bottom: 20px;
+}
+
+.ls-prev-innings-title {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.ls-prev-innings-table {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ls-prev-innings-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+}
+
+.ls-prev-innings-name {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.ls-prev-innings-score {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: #22c55e;
+}
+
+.ls-prev-innings-balls {
+  font-weight: 500;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.ls-start-form {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+}
+
+.ls-btn-secondary {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 18px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.ls-extra-runs-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.ls-extra-run-option {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.ls-extra-run-option:hover {
+  border-color: #f59e0b;
+  color: #f59e0b;
+}
+
+/* Shot direction picker */
+.ls-shot-direction-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.ls-shot-direction-btn {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.ls-shot-direction-btn:hover {
+  border-color: #22c55e;
+  color: #22c55e;
+}
+
+/* Required run rate */
+.ls-rrr-block {
+  margin-top: 10px;
+}
+
+.ls-rrr-stats {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  margin-top: 6px;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.ls-rrr-required strong {
+  color: #f59e0b;
+}
+
+/* Commentary + partnership */
+.ls-commentary-line {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+  font-style: italic;
+}
+
+.ls-partnership-line {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.ls-partnership-line strong {
+  color: #22c55e;
+}
+
+@media (max-width: 500px) {
+  .ls-batters-row {
+    grid-template-columns: 1fr;
+  }
+}
