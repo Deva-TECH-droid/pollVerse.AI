@@ -61,6 +61,12 @@ function Navbar() {
             🤖 AI Performance
           </Link>
           <Link
+            to="/gully-cricket"
+            className={`nav-link ${location.pathname.startsWith('/gully-cricket') ? 'active' : ''}`}
+          >
+            🏏 Gully Cricket
+          </Link>
+          <Link
             to="/leaderboard"
             className={`nav-link ${location.pathname === '/leaderboard' ? 'active' : ''}`}
           >

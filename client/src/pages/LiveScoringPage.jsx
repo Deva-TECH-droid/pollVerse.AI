@@ -1,6 +1,8 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useContext } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '@clerk/clerk-react';
+import { AuthContext } from '../context/AuthContext';
+import socket from '../socket';
 import '../styles/GullyCricket.css';
 import '../styles/LiveScoring.css';
 
@@ -271,6 +273,7 @@ function NewBowlerModal({ bowlingPlayers, lastBowler, onConfirm }) {
 function LiveScoringPage() {
   const { id } = useParams();
   const { getToken } = useAuth();
+  const { user } = useContext(AuthContext);
   const [match, setMatch] = useState(null);
   const [inningsSummaries, setInningsSummaries] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -281,6 +284,15 @@ function LiveScoringPage() {
   const [pendingBowlerPick, setPendingBowlerPick] = useState(false);
   const [scoring, setScoring] = useState(false);
   const [stashedBowler, setStashedBowler] = useState(null);
+
+  const isCreator = Boolean(
+    user && match && (
+      user.isAdmin ||
+      (!match.createdBy || (!match.createdBy.userId && !match.createdBy.email)) ||
+      (match.createdBy?.userId && String(user._id) === String(match.createdBy.userId)) ||
+      (match.createdBy?.email && user.email?.toLowerCase() === match.createdBy.email.toLowerCase())
+    )
+  );
 
   const fetchMatch = useCallback(async () => {
     try {
@@ -298,7 +310,29 @@ function LiveScoringPage() {
 
   useEffect(() => {
     fetchMatch();
-  }, [fetchMatch]);
+
+    const handleScoreUpdate = (data) => {
+      if (data && data.match) {
+        setMatch(data.match);
+        setInningsSummaries(data.innings);
+      } else {
+        fetchMatch();
+      }
+    };
+
+    socket.on(`match_update_${id}`, handleScoreUpdate);
+    socket.on('gully_match_updated', fetchMatch);
+
+    // Spectators auto-poll every 3 seconds for continuous updates
+    const interval = setInterval(fetchMatch, 3000);
+
+    return () => {
+      socket.off(`match_update_${id}`, handleScoreUpdate);
+      socket.off('gully_match_updated', fetchMatch);
+      clearInterval(interval);
+    };
+  }, [id, fetchMatch]);
+
 
   const applyResponse = (data) => {
     setMatch(data.match);
@@ -405,12 +439,37 @@ function LiveScoringPage() {
     <div className="gc-container">
       <Link to="/gully-cricket" className="gc-back-link">← Back</Link>
 
-      <div className="gc-hero" style={{ padding: '24px' }}>
-        <h1 className="gc-title" style={{ fontSize: '1.5rem' }}>{match.teamA.name} <span className="gc-accent">vs</span> {match.teamB.name}</h1>
+      <div className="gc-hero" style={{ padding: '24px', position: 'relative' }}>
+        <div className="ls-mode-badge-wrap">
+          {isCreator ? (
+            <span className="ls-badge ls-badge-creator">
+              ⚡ 🏏 SCORER MODE (Match Admin)
+            </span>
+          ) : (
+            <span className="ls-badge ls-badge-spectator">
+              <span className="ls-pulse-dot" /> 👁️ SPECTATOR MODE (Live Updates)
+            </span>
+          )}
+        </div>
+
+        <h1 className="gc-title" style={{ fontSize: '1.5rem', marginTop: '4px' }}>
+          {match.teamA.name} <span className="gc-accent">vs</span> {match.teamB.name}
+        </h1>
         <p className="gc-subtitle">
-          {match.overs}-over match · {match[match.tossWonBy].name} has won the toss and elected to {match.tossDecision === 'bat' ? 'bat first' : 'bowl first'}
+          {match.overs}-over match · {match[match.tossWonBy].name} won toss & elected to {match.tossDecision === 'bat' ? 'bat first' : 'bowl first'}
         </p>
+        {match.createdBy?.name && (
+          <p style={{ fontSize: '0.82rem', color: '#94a3b8', marginTop: '6px' }}>
+            Match Creator: <strong style={{ color: '#38bdf8' }}>{match.createdBy.name}</strong>
+          </p>
+        )}
       </div>
+
+      {!isCreator && match.status !== 'completed' && (
+        <div className="ls-spectator-notice">
+          <span>🔒 <strong>Read-Only Mode:</strong> Only the match creator ({match.createdBy?.name || 'Creator'}) can update score. You are receiving live ball-by-ball updates automatically!</span>
+        </div>
+      )}
 
       {match.status === 'completed' && (
         <>
@@ -422,12 +481,18 @@ function LiveScoringPage() {
       )}
 
       {needsInningsStart ? (
-        <StartInningsForm
-          match={match}
-          previousInnings={match.innings.length === 1 ? inningsSummaries[0] : null}
-          onStarted={applyResponse}
-          getToken={getToken}
-        />
+        isCreator ? (
+          <StartInningsForm
+            match={match}
+            previousInnings={match.innings.length === 1 ? inningsSummaries[0] : null}
+            onStarted={applyResponse}
+            getToken={getToken}
+          />
+        ) : (
+          <div className="gc-placeholder">
+            ⏳ Waiting for match creator ({match.createdBy?.name || 'Creator'}) to start {match.innings.length === 1 ? '2nd innings' : '1st innings'}...
+          </div>
+        )
       ) : (
         lastInnings && (
           <>
@@ -495,25 +560,33 @@ function LiveScoringPage() {
                   </div>
                 </div>
 
-                <div className="ls-scoring-pad">
-                  {[0, 1, 2, 3, 4, 6].map((r) => (
-                    <button
-                      key={r}
-                      className={`ls-run-btn ${r === 4 || r === 6 ? 'ls-run-btn-boundary' : ''}`}
-                      disabled={scoring}
-                      onClick={() => handleScoreTap(r)}
-                    >
-                      {r}
-                    </button>
-                  ))}
-                  <button className="ls-extra-btn" disabled={scoring} onClick={() => setPendingExtraType('wide')}>Wide</button>
-                  <button className="ls-extra-btn" disabled={scoring} onClick={() => setPendingExtraType('noball')}>No Ball</button>
-                  <button className="ls-extra-btn" disabled={scoring} onClick={() => setPendingExtraType('bye')}>Bye</button>
-                  <button className="ls-extra-btn" disabled={scoring} onClick={() => setPendingExtraType('legbye')}>Leg Bye</button>
-                  <button className="ls-wicket-btn" disabled={scoring} onClick={() => setShowWicketModal(true)}>🏏 WICKET</button>
-                </div>
+                {isCreator ? (
+                  <div className="ls-scoring-pad">
+                    {[0, 1, 2, 3, 4, 6].map((r) => (
+                      <button
+                        key={r}
+                        className={`ls-run-btn ${r === 4 || r === 6 ? 'ls-run-btn-boundary' : ''}`}
+                        disabled={scoring}
+                        onClick={() => handleScoreTap(r)}
+                      >
+                        {r}
+                      </button>
+                    ))}
+                    <button className="ls-extra-btn" disabled={scoring} onClick={() => setPendingExtraType('wide')}>Wide</button>
+                    <button className="ls-extra-btn" disabled={scoring} onClick={() => setPendingExtraType('noball')}>No Ball</button>
+                    <button className="ls-extra-btn" disabled={scoring} onClick={() => setPendingExtraType('bye')}>Bye</button>
+                    <button className="ls-extra-btn" disabled={scoring} onClick={() => setPendingExtraType('legbye')}>Leg Bye</button>
+                    <button className="ls-wicket-btn" disabled={scoring} onClick={() => setShowWicketModal(true)}>🏏 WICKET</button>
+                  </div>
+                ) : (
+                  <div className="ls-spectator-footer">
+                    <span>🟢 Live Ball-by-Ball Feed Active</span>
+                    <Link to={`/gully-cricket/match/${match._id}/summary`}>📊 View Full Scorecard ➔</Link>
+                  </div>
+                )}
               </>
             )}
+
 
             {lastInnings.isComplete && match.status !== 'completed' && (
               <div className="gc-placeholder">

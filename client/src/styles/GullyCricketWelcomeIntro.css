@@ -1,0 +1,396 @@
+/* Gully Cricket Welcome Intro AAA Animation Styling */
+
+.gc-welcome-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 99999;
+  background: #060b13;
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  font-family: 'Outfit', 'Inter', -apple-system, sans-serif;
+  perspective: 1000px;
+}
+
+/* Background Fireworks & Particle Canvas */
+.gc-fireworks-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* Dark Ground & Night Sky Atmosphere */
+.gc-stadium-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at 50% 30%, #0f1c2e 0%, #060b13 80%);
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* 4 Stadium Floodlights Towers */
+.gc-floodlights-container {
+  position: absolute;
+  top: 5%;
+  width: 90%;
+  display: flex;
+  justify-content: space-between;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.gc-floodlight-tower {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.gc-floodlight-head {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  background: #1e293b;
+  padding: 6px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
+}
+
+.gc-light-bulb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #334155;
+  transition: all 0.3s ease;
+}
+
+.gc-floodlight-tower.active .gc-light-bulb {
+  background: #ffffff;
+  box-shadow: 0 0 15px 5px #fef08a, 0 0 30px 10px rgba(254, 240, 138, 0.8);
+}
+
+.gc-light-beam {
+  position: absolute;
+  top: 60px;
+  width: 120px;
+  height: 600px;
+  background: linear-gradient(to bottom, rgba(254, 240, 138, 0.35) 0%, rgba(254, 240, 138, 0) 100%);
+  clip-path: polygon(40% 0%, 60% 0%, 100% 100%, 0% 100%);
+  opacity: 0;
+  transform-origin: top center;
+  pointer-events: none;
+}
+
+/* 3D Cricket Pitch & Boundary Rope */
+.gc-pitch-container {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  height: 45vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  z-index: 2;
+  transform: rotateX(55deg) translateZ(-50px);
+  transform-style: preserve-3d;
+  opacity: 0;
+}
+
+.gc-cricket-pitch {
+  width: 260px;
+  height: 100%;
+  background: linear-gradient(to bottom, #15803d 0%, #166534 40%, #a16207 70%, #854d0e 100%);
+  border-left: 4px dashed rgba(255, 255, 255, 0.7);
+  border-right: 4px dashed rgba(255, 255, 255, 0.7);
+  box-shadow: 0 0 50px rgba(22, 101, 52, 0.5);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 0;
+}
+
+.gc-crease-line {
+  width: 85%;
+  height: 4px;
+  background: #ffffff;
+  box-shadow: 0 0 10px #ffffff;
+}
+
+/* Stumps with LED bails */
+.gc-stumps {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  position: absolute;
+  bottom: 30px;
+  transform: rotateX(-55deg);
+}
+
+.gc-stump {
+  width: 8px;
+  height: 60px;
+  background: linear-gradient(to right, #fde047, #ca8a04);
+  border-radius: 4px;
+  box-shadow: 0 0 10px rgba(253, 224, 71, 0.4);
+}
+
+.gc-bail {
+  position: absolute;
+  top: -6px;
+  left: -2px;
+  width: 52px;
+  height: 6px;
+  background: #ef4444;
+  border-radius: 3px;
+  box-shadow: 0 0 15px #ef4444;
+  opacity: 0;
+}
+
+/* Boundary Rope Pulse */
+.gc-boundary-rope {
+  position: absolute;
+  bottom: 10px;
+  width: 95%;
+  height: 8px;
+  background: repeating-linear-gradient(90deg, #38bdf8 0px, #38bdf8 20px, #f43f5e 20px, #f43f5e 40px);
+  border-radius: 4px;
+  box-shadow: 0 0 20px #38bdf8;
+  opacity: 0;
+}
+
+/* 3D Animated Cricket Bat & Flying Leather Ball */
+.gc-animation-stage {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 5;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gc-cricket-bat {
+  position: absolute;
+  width: 24px;
+  height: 180px;
+  background: linear-gradient(to right, #d97706, #b45309, #78350f);
+  border-radius: 6px 6px 12px 12px;
+  border-top: 35px solid #1e293b;
+  transform-origin: top center;
+  opacity: 0;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
+}
+
+.gc-cricket-ball {
+  position: absolute;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #f87171 0%, #dc2626 50%, #991b1b 100%);
+  border: 2px dashed #ffffff;
+  box-shadow: 0 0 25px 8px rgba(220, 38, 38, 0.8);
+  opacity: 0;
+  z-index: 6;
+}
+
+/* Main Digital LED Scoreboard Text Container */
+.gc-scoreboard-container {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 2rem;
+  max-width: 1000px;
+}
+
+.gc-present-tag {
+  font-size: clamp(0.9rem, 2vw, 1.2rem);
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  color: #fde047;
+  font-weight: 700;
+  text-shadow: 0 0 15px rgba(253, 224, 71, 0.6);
+  margin-bottom: 1rem;
+  opacity: 0;
+}
+
+.gc-main-title {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+}
+
+.gc-title-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.15em;
+  perspective: 800px;
+}
+
+.gc-ball-letter {
+  display: inline-block;
+  font-size: clamp(2.8rem, 7vw, 5.8rem);
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  background: linear-gradient(135deg, #ffffff 30%, #fde047 70%, #f97316 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 10px 30px rgba(249, 115, 22, 0.4);
+  transform-style: preserve-3d;
+  will-change: transform, opacity;
+}
+
+.gc-accent-row .gc-ball-letter {
+  background: linear-gradient(135deg, #38bdf8 0%, #4ade80 50%, #fde047 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Digital LED Matrix Score Frame */
+.gc-matrix-frame {
+  background: rgba(15, 23, 42, 0.85);
+  border: 2px solid rgba(253, 224, 71, 0.3);
+  box-shadow: 0 0 40px rgba(253, 224, 71, 0.2), inset 0 0 20px rgba(0, 0, 0, 0.8);
+  border-radius: 20px;
+  padding: 1.2rem 2.5rem;
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  backdrop-filter: blur(12px);
+  margin-bottom: 2.5rem;
+  opacity: 0;
+}
+
+.gc-score-digit {
+  font-family: monospace, monospace;
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: #4ade80;
+  text-shadow: 0 0 12px #4ade80;
+  letter-spacing: 0.1em;
+}
+
+.gc-score-label {
+  font-size: 0.95rem;
+  letter-spacing: 0.2em;
+  color: #94a3b8;
+  text-transform: uppercase;
+}
+
+/* Action Controls */
+.gc-actions {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  opacity: 0;
+}
+
+.gc-btn-primary {
+  padding: 1rem 2.5rem;
+  border-radius: 14px;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #0f172a;
+  background: linear-gradient(135deg, #fde047 0%, #f97316 100%);
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 10px 30px rgba(249, 115, 22, 0.5);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.gc-btn-primary:hover {
+  transform: translateY(-3px) scale(1.04);
+  box-shadow: 0 15px 40px rgba(253, 224, 71, 0.7);
+}
+
+.gc-btn-secondary {
+  padding: 1rem 2rem;
+  border-radius: 14px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+}
+
+.gc-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: #fde047;
+}
+
+/* Top bar buttons */
+.gc-top-bar {
+  position: absolute;
+  top: 2rem;
+  right: 2rem;
+  z-index: 20;
+  display: flex;
+  gap: 1rem;
+}
+
+.gc-top-btn {
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fde047;
+  padding: 0.6rem 1.2rem;
+  border-radius: 30px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  transition: all 0.25s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.gc-top-btn:hover {
+  background: rgba(253, 224, 71, 0.2);
+  border-color: #fde047;
+  color: #ffffff;
+}
+
+@media (max-width: 768px) {
+  .gc-ball-letter {
+    font-size: 2.4rem;
+  }
+  .gc-matrix-frame {
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1rem;
+  }
+  .gc-floodlights-container {
+    width: 98%;
+  }
+}

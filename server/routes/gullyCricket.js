@@ -78,8 +78,19 @@ router.get('/matches/:id', async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
-// Scoring engine
+// Scoring engine & Authorization
 // ---------------------------------------------------------------------------
+
+function checkMatchCreator(match, user) {
+  if (!user) return false;
+  if (user.isAdmin) return true;
+  if (!match.createdBy || (!match.createdBy.userId && !match.createdBy.email)) return true;
+  const matchUserId = match.createdBy.userId ? match.createdBy.userId.toString() : null;
+  const currentUserId = user._id ? user._id.toString() : null;
+  if (matchUserId && currentUserId && matchUserId === currentUserId) return true;
+  if (match.createdBy.email && user.email && match.createdBy.email.toLowerCase() === user.email.toLowerCase()) return true;
+  return false;
+}
 
 // Turns a wicket ball into standard scorecard notation, e.g. "c Rahul b Aman",
 // "b Aman", "run out (Devansh)", "st Rahul b Aman".
@@ -607,6 +618,13 @@ router.post('/matches/:id/start-innings', requireAuth, async (req, res) => {
 
     const match = await Match.findById(req.params.id);
     if (!match) return res.status(404).json({ message: 'Match not found' });
+
+    if (!checkMatchCreator(match, req.user)) {
+      return res.status(403).json({
+        message: `Forbidden: Only the match creator (${match.createdBy?.name || 'Creator'}) is authorized to update score.`,
+      });
+    }
+
     if (match.status === 'completed') return res.status(400).json({ message: 'This match has already finished.' });
 
     const inningsCount = match.innings.length;
@@ -640,7 +658,16 @@ router.post('/matches/:id/start-innings', requireAuth, async (req, res) => {
     match.markModified('innings');
     await match.save();
 
-    res.status(201).json({ match, innings: match.innings.map((inn) => buildInningsSummary(match, inn)) });
+    const inningsSummaries = match.innings.map((inn) => buildInningsSummary(match, inn));
+
+    const io = req.app.get('io');
+    if (io) {
+      io.emit(`match_update_${match._id}`, { match, innings: inningsSummaries });
+      io.emit('gully_match_updated', { matchId: match._id });
+    }
+
+    res.status(201).json({ match, innings: inningsSummaries });
+
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
@@ -663,6 +690,12 @@ router.post('/matches/:id/ball', requireAuth, async (req, res) => {
 
     const match = await Match.findById(req.params.id);
     if (!match) return res.status(404).json({ message: 'Match not found' });
+
+    if (!checkMatchCreator(match, req.user)) {
+      return res.status(403).json({
+        message: `Forbidden: Only the match creator (${match.createdBy?.name || 'Creator'}) is authorized to update score.`,
+      });
+    }
 
     const innings = match.innings[match.innings.length - 1];
     if (!innings || innings.isComplete) {
@@ -775,12 +808,21 @@ router.post('/matches/:id/ball', requireAuth, async (req, res) => {
       });
     }
 
+    const finalSummaries = match.innings.map((inn) => buildInningsSummary(match, inn));
+
+    const io = req.app.get('io');
+    if (io) {
+      io.emit(`match_update_${match._id}`, { match, innings: finalSummaries });
+      io.emit('gully_match_updated', { matchId: match._id });
+    }
+
     res.json({
       match,
-      innings: match.innings.map((inn) => buildInningsSummary(match, inn)),
+      innings: finalSummaries,
       inningsJustEnded,
       matchComplete: match.status === 'completed',
     });
+
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }

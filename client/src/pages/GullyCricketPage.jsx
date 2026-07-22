@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import GullyCricketWelcomeIntro from '../components/GullyCricketWelcomeIntro';
 import '../styles/GullyCricket.css';
 
 const API_URL = process.env.REACT_APP_API_URL || '';
@@ -7,6 +8,8 @@ const API_URL = process.env.REACT_APP_API_URL || '';
 function GullyCricketPage() {
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showCricketIntro, setShowCricketIntro] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchMatches = async () => {
@@ -24,11 +27,42 @@ function GullyCricketPage() {
 
   return (
     <div className="gc-container">
+      {showCricketIntro && (
+        <GullyCricketWelcomeIntro
+          onComplete={() => setShowCricketIntro(false)}
+          onCreateMatch={() => {
+            setShowCricketIntro(false);
+            navigate('/gully-cricket/create');
+          }}
+        />
+      )}
+
       <div className="gc-hero">
-        <h1 className="gc-title">🏏 Gully Cricket <span className="gc-accent">Live Scoring</span></h1>
-        <p className="gc-subtitle">Score your local matches ball-by-ball, track player stats, and settle every "he's out" debate for good.</p>
-        <Link to="/gully-cricket/create" className="gc-submit-btn gc-cta-link">+ New Match</Link>
+        <h1 className="gc-title">
+          🏏 Gully Cricket <span className="gc-accent">Live Scoring</span>
+        </h1>
+        <p className="gc-subtitle">
+          Score your local matches ball-by-ball, track player stats, and settle every "he's out" debate for good.
+        </p>
+        <Link to="/gully-cricket/create" className="gc-submit-btn gc-cta-link">
+          + New Match
+        </Link>
         <div className="gc-hero-links">
+          <button
+            onClick={() => setShowCricketIntro(true)}
+            style={{
+              background: 'rgba(253, 224, 71, 0.12)',
+              border: '1px solid #fde047',
+              color: '#fde047',
+              padding: '0.4rem 1rem',
+              borderRadius: '20px',
+              cursor: 'pointer',
+              fontWeight: 600,
+              fontSize: '0.9rem',
+            }}
+          >
+            🏟️ Stadium Intro
+          </button>
           <Link to="/gully-cricket/history">📜 Match History</Link>
           <Link to="/gully-cricket/player">📊 Player Profiles</Link>
         </div>
@@ -52,7 +86,10 @@ function GullyCricketPage() {
                 <span className="gc-team-badge gc-team-badge-b">{m.teamB.name.slice(0, 2).toUpperCase()}</span>
                 <span className="gc-match-teams">{m.teamB.name}</span>
               </div>
-              <p className="gc-match-meta">{m.overs} overs · {m[m.tossWonBy].name} has won the toss and elected to {m.tossDecision === 'bat' ? 'bat first' : 'bowl first'}</p>
+              <p className="gc-match-meta">
+                {m.overs} overs · {m[m.tossWonBy].name} has won the toss and elected to{' '}
+                {m.tossDecision === 'bat' ? 'bat first' : 'bowl first'}
+              </p>
             </Link>
           ))}
         </div>
@@ -61,4 +98,4 @@ function GullyCricketPage() {
   );
 }
 
-export default GullyCricketPage;
+export default GullyCricketPage;

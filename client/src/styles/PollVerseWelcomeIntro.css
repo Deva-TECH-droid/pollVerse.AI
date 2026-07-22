@@ -1,0 +1,354 @@
+/* PollVerse Welcome Intro AAA Animation Styling */
+
+.pv-welcome-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 99999;
+  background: #030712;
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  font-family: 'Outfit', 'Inter', -apple-system, sans-serif;
+  perspective: 1200px;
+}
+
+/* Background Canvas */
+.pv-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Stage 1: Suspense Light Core */
+.pv-suspense-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.pv-light-source {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #38bdf8 0%, #6366f1 40%, rgba(99, 102, 241, 0) 70%);
+  box-shadow: 0 0 60px 30px rgba(56, 189, 248, 0.6), 0 0 120px 60px rgba(99, 102, 241, 0.4);
+  opacity: 0;
+  transform: scale(0.2);
+}
+
+.pv-suspense-text {
+  position: absolute;
+  bottom: 20%;
+  font-size: 0.9rem;
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  opacity: 0;
+}
+
+/* Stage 2: Illuminated Environment Grid & Light Rays */
+.pv-grid-bg {
+  position: absolute;
+  width: 200%;
+  height: 200%;
+  top: -50%;
+  left: -50%;
+  background-image: 
+    linear-gradient(to right, rgba(56, 189, 248, 0.07) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(56, 189, 248, 0.07) 1px, transparent 1px);
+  background-size: 50px 50px;
+  transform: rotateX(60deg) translateZ(-200px);
+  opacity: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.pv-glow-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.pv-glow-orb-1 {
+  width: 400px;
+  height: 400px;
+  top: 10%;
+  left: 20%;
+  background: rgba(99, 102, 241, 0.25);
+}
+
+.pv-glow-orb-2 {
+  width: 500px;
+  height: 500px;
+  bottom: 10%;
+  right: 15%;
+  background: rgba(236, 72, 153, 0.2);
+}
+
+.pv-glow-orb-3 {
+  width: 350px;
+  height: 350px;
+  top: 40%;
+  left: 60%;
+  background: rgba(56, 189, 248, 0.25);
+}
+
+/* Main Content Wrapper */
+.pv-main-content {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 2rem;
+  max-width: 1000px;
+  transform-style: preserve-3d;
+}
+
+/* Badge */
+.pv-badge-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 1.2rem;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(12px);
+  font-size: 0.85rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #38bdf8;
+  margin-bottom: 1.5rem;
+  opacity: 0;
+}
+
+.pv-badge-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #38bdf8;
+  box-shadow: 0 0 10px #38bdf8;
+}
+
+/* Split Text Logo Title */
+.pv-logo-title {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.pv-word-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.15em;
+  perspective: 800px;
+}
+
+.pv-letter {
+  display: inline-block;
+  font-size: clamp(3rem, 8vw, 6.5rem);
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  background: linear-gradient(135deg, #ffffff 20%, #38bdf8 60%, #818cf8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 10px 30px rgba(56, 189, 248, 0.3);
+  transform-style: preserve-3d;
+  will-change: transform, opacity;
+}
+
+.pv-word-accent .pv-letter {
+  background: linear-gradient(135deg, #38bdf8 0%, #c084fc 50%, #f43f5e 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Subtitle & Description */
+.pv-subtitle {
+  font-size: clamp(1.1rem, 2.5vw, 1.6rem);
+  font-weight: 500;
+  color: #e2e8f0;
+  max-width: 700px;
+  line-height: 1.5;
+  margin-bottom: 2rem;
+  opacity: 0;
+}
+
+/* 3D Floating Cards Container */
+.pv-floating-cards {
+  display: flex;
+  gap: 1.5rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 2.5rem;
+  width: 100%;
+}
+
+.pv-card {
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(16px);
+  padding: 1.2rem 1.8rem;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.15);
+  opacity: 0;
+  transform-style: preserve-3d;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.pv-card:hover {
+  border-color: rgba(56, 189, 248, 0.4);
+  box-shadow: 0 25px 50px rgba(56, 189, 248, 0.2);
+}
+
+.pv-card-icon {
+  font-size: 2rem;
+  background: rgba(255, 255, 255, 0.08);
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pv-card-info {
+  text-align: left;
+}
+
+.pv-card-info strong {
+  display: block;
+  font-size: 1.05rem;
+  color: #f8fafc;
+}
+
+.pv-card-info small {
+  color: #94a3b8;
+  font-size: 0.85rem;
+}
+
+/* Controls & Buttons */
+.pv-actions {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  opacity: 0;
+}
+
+.pv-btn-enter {
+  position: relative;
+  padding: 1rem 2.5rem;
+  border-radius: 14px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #ffffff;
+  background: linear-gradient(135deg, #0284c7 0%, #6366f1 100%);
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 10px 25px rgba(2, 132, 199, 0.4);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.pv-btn-enter:hover {
+  transform: translateY(-3px) scale(1.03);
+  box-shadow: 0 15px 35px rgba(99, 102, 241, 0.5);
+}
+
+.pv-btn-sound {
+  width: 50px;
+  height: 50px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1.3rem;
+  transition: all 0.3s ease;
+}
+
+.pv-btn-sound:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: #38bdf8;
+}
+
+/* Close/Replay floating top bar */
+.pv-top-bar {
+  position: absolute;
+  top: 2rem;
+  right: 2rem;
+  z-index: 20;
+  display: flex;
+  gap: 1rem;
+}
+
+.pv-top-btn {
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #e2e8f0;
+  padding: 0.6rem 1.2rem;
+  border-radius: 30px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  transition: all 0.25s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.pv-top-btn:hover {
+  background: rgba(56, 189, 248, 0.2);
+  border-color: #38bdf8;
+  color: #ffffff;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  .pv-letter {
+    font-size: 2.8rem;
+  }
+  .pv-floating-cards {
+    flex-direction: column;
+    align-items: center;
+  }
+  .pv-card {
+    width: 100%;
+    max-width: 320px;
+  }
+}

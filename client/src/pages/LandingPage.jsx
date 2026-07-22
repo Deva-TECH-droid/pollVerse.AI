@@ -1,7 +1,8 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import PollVerseWelcomeIntro from '../components/PollVerseWelcomeIntro';
 import '../styles/LandingPage.css';
 
 gsap.registerPlugin(ScrollTrigger);
@@ -77,6 +78,7 @@ const STEPS = [
 ];
 
 function LandingPage() {
+  const [showWelcome, setShowWelcome] = useState(true);
   const containerRef = useRef(null);
   const heroRef = useRef(null);
   const featuresRef = useRef(null);
@@ -170,6 +172,7 @@ function LandingPage() {
 
   return (
     <div className="landing-page" ref={containerRef}>
+      {showWelcome && <PollVerseWelcomeIntro onComplete={() => setShowWelcome(false)} />}
       <div className="landing-bg">
         <div className="landing-bg-orb orb-1" />
         <div className="landing-bg-orb orb-2" />
@@ -209,6 +212,13 @@ function LandingPage() {
             <Link to="/polls" className="btn btn-secondary">
               Browse Live Polls
             </Link>
+            <button
+              onClick={() => setShowWelcome(true)}
+              className="btn btn-secondary"
+              style={{ background: 'rgba(56, 189, 248, 0.12)', borderColor: '#38bdf8', color: '#38bdf8' }}
+            >
+              ✨ Replay Welcome Intro
+            </button>
           </div>
 
           <div className="hero-stats">
