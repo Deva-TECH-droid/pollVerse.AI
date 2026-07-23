@@ -324,6 +324,29 @@
   display: flex;
   align-items: center;
   gap: 0.6rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.gc-btn-primary::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.3) 50%,
+    transparent 70%
+  );
+  animation: gc-btn-shimmer 3s infinite;
+}
+
+@keyframes gc-btn-shimmer {
+  0% { transform: translateX(-100%) rotate(45deg); }
+  100% { transform: translateX(100%) rotate(45deg); }
 }
 
 .gc-btn-primary:hover {
@@ -347,6 +370,8 @@
 .gc-btn-secondary:hover {
   background: rgba(255, 255, 255, 0.18);
   border-color: #fde047;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(253, 224, 71, 0.2);
 }
 
 /* Top bar buttons */
@@ -381,6 +406,135 @@
   color: #ffffff;
 }
 
+/* ====================== */
+/* "SITE FOR" Subtitle Row */
+/* ====================== */
+.gc-subtitle-row {
+  font-size: clamp(1rem, 2.5vw, 1.6rem);
+  font-weight: 700;
+  letter-spacing: 0.6em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  opacity: 0;
+  margin: 0.3rem 0;
+  text-shadow: 0 0 10px rgba(148, 163, 184, 0.4);
+  position: relative;
+}
+
+.gc-subtitle-row::after {
+  content: '';
+  display: block;
+  width: 60%;
+  height: 2px;
+  margin: 0.4rem auto 0;
+  background: linear-gradient(90deg, transparent, #38bdf8, #4ade80, transparent);
+  animation: gc-line-glow 2s ease-in-out infinite;
+}
+
+@keyframes gc-line-glow {
+  0%, 100% { opacity: 0.3; transform: scaleX(0.7); }
+  50% { opacity: 1; transform: scaleX(1); }
+}
+
+/* ======================== */
+/* Pulsing Neon Ring Effect */
+/* ======================== */
+.gc-neon-ring {
+  position: absolute;
+  width: clamp(280px, 55vw, 550px);
+  height: clamp(280px, 55vw, 550px);
+  border-radius: 50%;
+  border: 2px solid rgba(56, 189, 248, 0.15);
+  box-shadow:
+    0 0 40px rgba(56, 189, 248, 0.15),
+    0 0 80px rgba(74, 222, 128, 0.08),
+    inset 0 0 40px rgba(56, 189, 248, 0.05);
+  opacity: 0;
+  transform: scale(0.5);
+  z-index: 0;
+  animation: gc-neon-pulse 3s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes gc-neon-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 40px rgba(56, 189, 248, 0.15),
+      0 0 80px rgba(74, 222, 128, 0.08),
+      inset 0 0 40px rgba(56, 189, 248, 0.05);
+    border-color: rgba(56, 189, 248, 0.15);
+  }
+  50% {
+    box-shadow:
+      0 0 60px rgba(56, 189, 248, 0.35),
+      0 0 120px rgba(74, 222, 128, 0.2),
+      inset 0 0 60px rgba(56, 189, 248, 0.12);
+    border-color: rgba(56, 189, 248, 0.4);
+  }
+}
+
+/* ============================ */
+/* Floating Cricket Emoji Particles */
+/* ============================ */
+.gc-float-particles {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 4;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.gc-float-emoji {
+  position: absolute;
+  font-size: clamp(1.2rem, 3vw, 2rem);
+  opacity: 0;
+  will-change: transform, opacity;
+  filter: drop-shadow(0 0 6px rgba(253, 224, 71, 0.4));
+}
+
+/* ====================== */
+/* Animated Tagline */
+/* ====================== */
+.gc-tagline {
+  font-size: clamp(0.85rem, 1.8vw, 1.1rem);
+  color: #94a3b8;
+  font-weight: 500;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  margin-bottom: 1.8rem;
+  opacity: 0;
+  transform: translateY(15px);
+  position: relative;
+  padding: 0.6rem 1.5rem;
+  border-radius: 50px;
+  background: rgba(15, 23, 42, 0.5);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  backdrop-filter: blur(8px);
+  animation: gc-tagline-glow 2.5s ease-in-out infinite;
+  animation-delay: 5s;
+}
+
+@keyframes gc-tagline-glow {
+  0%, 100% { border-color: rgba(148, 163, 184, 0.15); color: #94a3b8; }
+  50% { border-color: rgba(56, 189, 248, 0.4); color: #e2e8f0; }
+}
+
+/* ====================== */
+/* Enhanced Letter Hover */
+/* ====================== */
+.gc-ball-letter {
+  transition: transform 0.2s ease, filter 0.2s ease;
+  cursor: default;
+}
+
+.gc-ball-letter:hover {
+  transform: scale(1.15) translateY(-4px) !important;
+  filter: brightness(1.3) drop-shadow(0 0 15px rgba(253, 224, 71, 0.6));
+}
+
 @media (max-width: 768px) {
   .gc-ball-letter {
     font-size: 2.4rem;
@@ -393,4 +547,21 @@
   .gc-floodlights-container {
     width: 98%;
   }
+  .gc-subtitle-row {
+    font-size: 0.85rem;
+    letter-spacing: 0.3em;
+  }
+  .gc-neon-ring {
+    width: 250px;
+    height: 250px;
+  }
+  .gc-tagline {
+    font-size: 0.75rem;
+    padding: 0.4rem 1rem;
+  }
+  .gc-actions {
+    flex-direction: column;
+    gap: 0.8rem;
+  }
 }
+

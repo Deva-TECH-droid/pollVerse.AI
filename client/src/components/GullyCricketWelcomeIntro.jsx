@@ -5,6 +5,7 @@ import '../styles/GullyCricketWelcomeIntro.css';
 
 const TEXT_LINE1 = 'GULLY CRICKET'.split('');
 const TEXT_LINE2 = 'SCORING'.split('');
+const FLOATING_EMOJIS = ['🏏', '🏆', '⚡', '🔥', '🎯', '🏟️', '🎉', '⭐', '🥎', '💥'];
 
 function GullyCricketWelcomeIntro({ onComplete, onCreateMatch }) {
   const containerRef = useRef(null);
@@ -251,6 +252,27 @@ function GullyCricketWelcomeIntro({ onComplete, onCreateMatch }) {
           }, 80);
         })
         .to('.gc-actions', { opacity: 1, y: 0, duration: 0.6, ease: 'back.out(1.7)' }, '+=0.2');
+
+      // Floating emoji particles continuous animation
+      const floaters = document.querySelectorAll('.gc-float-emoji');
+      floaters.forEach((el, idx) => {
+        gsap.set(el, {
+          x: Math.random() * window.innerWidth,
+          y: window.innerHeight + 50,
+          opacity: 0,
+          scale: Math.random() * 0.6 + 0.5,
+        });
+        gsap.to(el, {
+          y: -100,
+          x: `+=${(Math.random() - 0.5) * 200}`,
+          rotation: Math.random() * 720 - 360,
+          opacity: 0.7,
+          duration: Math.random() * 6 + 5,
+          delay: Math.random() * 8 + 2,
+          repeat: -1,
+          ease: 'none',
+        });
+      });
     }, containerRef);
 
     return () => {
@@ -335,6 +357,13 @@ function GullyCricketWelcomeIntro({ onComplete, onCreateMatch }) {
         <div className="gc-cricket-ball" />
       </div>
 
+      {/* Floating Cricket Emoji Particles */}
+      <div className="gc-float-particles">
+        {FLOATING_EMOJIS.map((emoji, idx) => (
+          <span key={`float-${idx}`} className="gc-float-emoji">{emoji}</span>
+        ))}
+      </div>
+
       {/* Main Scoreboard Content */}
       <div className="gc-scoreboard-container">
         <div className="gc-present-tag">🏆 PollLive Presents 🏆</div>
@@ -359,9 +388,9 @@ function GullyCricketWelcomeIntro({ onComplete, onCreateMatch }) {
 
         {/* LED Digital Matrix Frame */}
         <div className="gc-matrix-frame">
-          <span className="gc-score-label">MATCH STATUS</span>
+          <span className="gc-score-label">Gully Cricket</span>
           <span className="gc-score-digit">{scoreCount}</span>
-          <span className="gc-score-label">BALL-BY-BALL LIVE</span>
+          <span className="gc-score-label"> BALL-BY-BALL LIVE-SCORING</span>
         </div>
 
         {/* Action Controls */}

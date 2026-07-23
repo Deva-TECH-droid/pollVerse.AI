@@ -27,7 +27,7 @@ const isProduction = process.env.NODE_ENV === 'production';
 
 // Allowed origins: Vercel frontend in prod, localhost in dev
 const allowedOrigins = isProduction
-  ? [process.env.CLIENT_URL, 'https://livepollverse.vercel.app'].filter(Boolean)
+  ? [process.env.CLIENT_URL, 'https://livepollverse.vercel.app', 'https://poll-verse-ai-delta.vercel.app'].filter(Boolean)
   : ['http://localhost:3000', 'http://localhost:3001'];
 
 

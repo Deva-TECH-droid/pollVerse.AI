@@ -1,7 +1,7 @@
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
 
 /**
- * Helper to generate high-fidelity, realistic simulation predictions when Gemini API is unavailable.
+ * Helper to generate high-fidelity, realistic context-aware simulation predictions when Gemini API is unavailable.
  */
 function generateSimulatedPrediction(poll) {
   const numOptions = poll.options.length;
@@ -23,23 +23,55 @@ function generateSimulatedPrediction(poll) {
     if (probabilities[i] > probabilities[maxIdx]) maxIdx = i;
   }
   
-  const textToAnalyze = (poll.question + " " + poll.description + " " + poll.options.map(o => o.text).join(" ")).toLowerCase();
+  const textToAnalyze = (poll.question + " " + (poll.description || '') + " " + poll.options.map(o => o.text).join(" ")).toLowerCase();
   
   let category = "general";
-  if (textToAnalyze.match(/player|messi|ronaldo|football|sports|cricket|match|game|team|tennis|basketball|nba|virat|dhoni|ipl|ball/)) {
-    category = "sports";
+  if (textToAnalyze.match(/cricket|ipl|bhuvi|bumrah|virat|dhoni|rohit|bowler|batsman|wicket|economy|runs|t20|odi|test|match/)) {
+    category = "cricket";
+  } else if (textToAnalyze.match(/support|cjp|caa|nrc|neet|leak|paper|law|policy|ban|cancel|government|bill|protest|reform|allow|should|vote|opinion/)) {
+    category = "opinion_policy";
+  } else if (textToAnalyze.match(/player|messi|ronaldo|football|soccer|goal|assist|tennis|basketball|nba/)) {
+    category = "football";
   } else if (textToAnalyze.match(/movie|film|oscar|actor|director|series|netflix|hollywood|bollywood|marvel|dc|show|cinema/)) {
     category = "movies";
   } else if (textToAnalyze.match(/iphone|samsung|phone|gadget|processor|tech|laptop|gpu|card|console|playstation|xbox|apple|android|intel|amd|nvidia/)) {
     category = "technology";
-  } else if (textToAnalyze.match(/election|modi|gandhi|biden|trump|president|vote|party|minister|politics|democrat|republican|senate|parliament/)) {
+  } else if (textToAnalyze.match(/election|modi|gandhi|biden|trump|president|party|minister|politics|democrat|republican|senate|parliament/)) {
     category = "politics";
   }
   
   let comparisonStats = [];
   let explainableAI = [];
   
-  if (category === "sports") {
+  if (category === "cricket") {
+    comparisonStats = [
+      { metric: "Wickets Taken", values: poll.options.map((_, i) => `${170 - i * 25}`) },
+      { metric: "Economy Rate", values: poll.options.map((_, i) => `${(7.12 + i * 0.45).toFixed(2)}`) },
+      { metric: "Bowling Average", values: poll.options.map((_, i) => `${(23.4 + i * 2.1).toFixed(1)}`) },
+      { metric: "IPL Titles Won", values: poll.options.map((_, i) => `${5 - i * 2 > 0 ? 5 - i * 2 : 1}`) },
+      { metric: "Death Overs Econ", values: poll.options.map((_, i) => `${(8.2 + i * 0.75).toFixed(1)}`) }
+    ];
+    explainableAI = [
+      "✓ Superior economy rate in death overs and pressure match situations",
+      "✓ Higher career wicket-taking consistency in tournament play",
+      "✓ Better head-to-head bowling average against top batsmen",
+      "✓ Proven clutch match-winning performances in IPL play-offs"
+    ];
+  } else if (category === "opinion_policy") {
+    comparisonStats = [
+      { metric: "Key Advantages", values: poll.options.map((_, i) => i === 0 ? "High transparency & student fairness" : "Status quo maintenance") },
+      { metric: "Key Disadvantages / Risks", values: poll.options.map((_, i) => i === 0 ? "Procedural delay in calendar" : "Risk of integrity loss & public backlash") },
+      { metric: "Public & Expert Stance", values: poll.options.map((_, i) => `${74 - i * 22}% Support`) },
+      { metric: "Institutional Feasibility", values: poll.options.map((_, i) => `${(8.7 - i * 0.9).toFixed(1)}/10`) },
+      { metric: "Overall Merit Score", values: poll.options.map((_, i) => i === 0 ? "Strongly Recommended" : "Low Justification") }
+    ];
+    explainableAI = [
+      "✓ Key advantages significantly outweigh operational disadvantages",
+      "✓ Protects institutional integrity and public trust effectively",
+      "✓ Supported by strong expert legal and administrative consensus",
+      "✓ Low risk of long-term legal vulnerabilities or security flaws"
+    ];
+  } else if (category === "football") {
     comparisonStats = [
       { metric: "Win Rate", values: poll.options.map((_, i) => `${75 - i * 5}%`) },
       { metric: "Recent Form", values: poll.options.map((_, i) => "⭐".repeat(5 - i)) },
@@ -49,9 +81,9 @@ function generateSimulatedPrediction(poll) {
     ];
     explainableAI = [
       "✓ Better recent head-to-head performance record",
-      "✓ Higher average match rating in the current league",
-      "✓ More trophies won in high-level competitions",
-      "✓ Superior athletic statistics and fitness levels"
+      "✓ Higher average match rating in current season",
+      "✓ More trophies won in major international competitions",
+      "✓ Superior athletic statistics and peak performance impact"
     ];
   } else if (category === "movies") {
     comparisonStats = [
@@ -92,8 +124,8 @@ function generateSimulatedPrediction(poll) {
     explainableAI = [
       "✓ Stronger historical performance in previous terms",
       "✓ Favorable poll survey statistics and political momentum",
-      "✓ Greater institutional experience and cabinet leadership",
-      "✓ Higher voter approval rating in urban and rural centers"
+      "✓ Greater institutional experience and leadership",
+      "✓ Higher voter approval rating across demographics"
     ];
   } else {
     // General
@@ -127,33 +159,43 @@ function generateSimulatedPrediction(poll) {
  * with a high-fidelity local simulation fallback.
  */
 async function generateAIPrediction(poll) {
-  const apiKey = process.env.GEMINI_API_KEY || process.env.ANTHROPIC_API_KEY; // Accept both for flexibility
+  const apiKey = process.env.GEMINI_API_KEY || process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     console.warn('⚠️  GEMINI_API_KEY not set in .env — using AI prediction simulator fallback.');
     return generateSimulatedPrediction(poll);
   }
 
   const optionNames = poll.options.map((o) => o.text).join(', ');
-  const prompt = `You are an AI data analyst for a poll prediction app.
-Analyze the following poll question and options to estimate the winning probability of each option based on historical performance, recent statistics, and general trends.
+  const prompt = `You are an expert AI data analyst for a poll prediction app.
+Analyze the following poll question and options to estimate the winning probability of each option based on deep context extraction, domain-specific statistics, pros/cons, and key factual arguments.
 
 Poll Question: "${poll.question}"
 Description: "${poll.description || ''}"
 Options: ${optionNames}
 
-Determine the relevant category (e.g. sports, movies, politics, technology, general) and synthesize realistic, accurate, or highly plausible side-by-side statistics comparing all the options. For example, if comparing Messi and Ronaldo, gather stats like Goals, Assists, Matches, Win Rate, and Recent Form. If comparing smartphones, gather stats like Performance Rating, Battery Life, Camera Rating, User Reviews, and Value For Money. Ensure that you output exactly one column/value per option for each statistic.
+CONTEXT ANALYSIS & INSTRUCTIONS:
+1. Determine the EXACT domain of this poll (e.g., Cricket/IPL, Football, Politics/Law/Social Policy, Smartphone Tech, Movies/Entertainment, or General Opinion).
+2. DO NOT use generic football or sports templates unless the poll is explicitly about football!
+3. Formulate metrics in "comparisonStats" that match the precise topic:
+   - If CRICKET / IPL (e.g. Bhuvi vs Bumrah): Use Cricket metrics like Wickets, Economy Rate, Bowling Average, IPL Titles, Death Overs Economy, Strike Rate, etc.
+   - If OPINION / DEBATE / POLICY (e.g., "Do you support CJP / NEET paper leak support/cancel / Law X"): Evaluate the arguments for and against! Use metrics like "Key Advantages", "Key Disadvantages / Risks", "Public & Expert Stance", "Institutional Feasibility", "Overall Merit Score". Weigh the advantages against disadvantages (e.g. national security, transparency, student fairness, anti-national/law & order risks) to determine which option is logically superior.
+   - If TECH / GADGETS: Use Performance Rating, Battery Life, Camera Rating, User Satisfaction, Value for Money.
+   - If MOVIES: Use Box Office, IMDb Rating, Audience Score, Critic Consensus.
+   - If GENERAL: Use topic-relevant comparative metrics.
+
+Ensure that for each metric in "comparisonStats", you provide exactly one value per option in the exact order of the options list.
 
 You must respond with a JSON object conforming exactly to this JSON schema:
 {
   "probabilities": [number], // An array of numbers representing the estimated win probability in percentage for each option in the exact same order as the options list. Must sum to 100.
-  "predictedOptionIndex": number, // The index (0-indexed) of the option predicted to have the highest probability.
+  "predictedOptionIndex": number, // The index (0-indexed) of the option predicted to have the highest probability / merit.
   "confidenceLevel": "High" | "Medium" | "Low", // The confidence level of this prediction.
   "confidenceScore": number, // A confidence percentage score from 1 to 100.
-  "explainableAI": [string], // A list of 3-5 concise bullet points (each under 15 words) explaining why the AI prefers the predicted winner (e.g., "✓ Better recent performance", "✓ More trophies in the last 5 years"). Ensure each starts with "✓ ".
-  "comparisonStats": [ // An array of 4-5 statistics comparing the options side-by-side.
+  "explainableAI": [string], // A list of 3-5 concise bullet points (each under 18 words) explaining why the AI prefers the predicted winner or option based on specific facts, pros/cons, stats, or logical advantages. Ensure each starts with "✓ ".
+  "comparisonStats": [ // An array of 4-5 statistics/metrics comparing the options side-by-side.
     {
-      "metric": string, // The name of the metric (e.g. "Goals", "IMDb Rating", "Battery Life", etc.)
-      "values": [string] // An array of strings representing the value of this metric for each option, in the exact same order as the options list. Use ⭐ emojis for ratings if appropriate.
+      "metric": string, // The name of the metric (e.g. "Wickets", "Economy Rate", "Key Advantages", "Disadvantages / Risks", "IMDb Rating", etc.)
+      "values": [string] // An array of strings representing the value of this metric for each option, in the exact same order as the options list.
     }
   ]
 }
@@ -231,7 +273,7 @@ async function generatePollInsight(poll) {
   const apiKey = process.env.GEMINI_API_KEY || process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     console.warn('⚠️  GEMINI_API_KEY not set in .env — skipping AI insight generation.');
-    return `Interesting fact about ${poll.options.map(o => o.text).join(' and ')}: This matchup highlights unique achievements and contrasting styles between both choices.`;
+    return `Interesting background on ${poll.options.map(o => o.text).join(' & ')}: This topic highlights contrasting perspectives, key data, and arguments between options.`;
   }
 
   const optionNames = poll.options.map((o) => o.text).join(' vs ');
@@ -240,13 +282,13 @@ async function generatePollInsight(poll) {
       ? poll.options[poll.winningOptionIndex].text
       : null;
 
-  const prompt = `Write a short, engaging "know more" factual background paragraph for a prediction poll app called PollVerse.
+  const prompt = `Write a short, engaging factual background paragraph for a prediction poll app called PollVerse.
   
 Poll question: "${poll.question}"
 Options: ${optionNames}
 ${winningOption ? `The option with the most user votes was: "${winningOption}"` : ''}
 
-Write 2 short paragraphs giving interesting, factual background on this matchup — achievements, history, or context. Keep it under 150 words. Do not use markdown formatting.`;
+Write 2 short paragraphs giving interesting, factual background or key argument context on this topic. Keep it under 150 words. Do not use markdown formatting.`;
 
   try {
     const res = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {

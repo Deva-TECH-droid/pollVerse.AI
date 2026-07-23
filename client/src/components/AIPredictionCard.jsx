@@ -30,6 +30,11 @@ function AnimatedPercent({ value }) {
 // underneath the prediction read as tagged chips rather than a plain list.
 function factorIcon(text) {
   const t = text.toLowerCase();
+  if (t.includes('wicket') || t.includes('cricket') || t.includes('bowling') || t.includes('ipl')) return '🏏';
+  if (t.includes('advantage') || t.includes('pro') || t.includes('fairness') || t.includes('transparency') || t.includes('benefit')) return '👍';
+  if (t.includes('disadvantage') || t.includes('risk') || t.includes('flaw') || t.includes('con') || t.includes('threat')) return '⚠️';
+  if (t.includes('law') || t.includes('legal') || t.includes('court') || t.includes('policy')) return '⚖️';
+  if (t.includes('security') || t.includes('national') || t.includes('trust')) return '🛡️';
   if (t.includes('goal')) return '⚽';
   if (t.includes('assist')) return '🎯';
   if (t.includes('form')) return '📈';
@@ -53,8 +58,8 @@ function AIPredictionCard({ poll }) {
       <div className="aiv-header">
         <span className="aiv-robot">🤖</span>
         <div className="aiv-header-text">
-          <p className="aiv-title">AI Poll Insights</p>
-          <p className="aiv-subtitle">Prediction based on stats and historical data</p>
+          <p className="aiv-title">AI Poll Insights & Prediction</p>
+          <p className="aiv-subtitle">Dynamic analysis based on topic stats, pros & cons</p>
         </div>
         <span className={`aiv-confidence aiv-confidence-${(aiPrediction.confidenceLevel || 'medium').toLowerCase()}`}>
           {aiPrediction.confidenceLevel || 'Medium'} Confidence
