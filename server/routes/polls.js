@@ -35,7 +35,7 @@ async function notifyUsersAboutNewPoll(poll, creator) {
     return { sent: 0, failed: 0 };
   }
 
-  const frontendUrl = (process.env.CLIENT_URL || 'http://localhost:3000').replace(/\/$/, '');
+  const frontendUrl = (process.env.CLIENT_URL || 'https://poll-verse-ai-delta.vercel.app').replace(/\/$/, '');
   const pollUrl = `${frontendUrl}/poll/${poll._id}`;
   const creatorName = creator.name || getDisplayName(creator.email);
 

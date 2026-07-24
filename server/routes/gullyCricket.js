@@ -78,19 +78,8 @@ router.get('/matches/:id', async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
-// Scoring engine & Authorization
+// Scoring engine
 // ---------------------------------------------------------------------------
-
-function checkMatchCreator(match, user) {
-  if (!user) return false;
-  if (user.isAdmin) return true;
-  if (!match.createdBy || (!match.createdBy.userId && !match.createdBy.email)) return true;
-  const matchUserId = match.createdBy.userId ? match.createdBy.userId.toString() : null;
-  const currentUserId = user._id ? user._id.toString() : null;
-  if (matchUserId && currentUserId && matchUserId === currentUserId) return true;
-  if (match.createdBy.email && user.email && match.createdBy.email.toLowerCase() === user.email.toLowerCase()) return true;
-  return false;
-}
 
 // Turns a wicket ball into standard scorecard notation, e.g. "c Rahul b Aman",
 // "b Aman", "run out (Devansh)", "st Rahul b Aman".
@@ -399,35 +388,77 @@ function pickVariant(list, seed) {
 
 // Turns one ball's raw data into a short broadcast-style commentary line.
 function generateCommentary(ball, seed) {
+  const batter = ball.striker;
+
   if (ball.isWicket) {
+    const outName = ball.outBatsman || batter;
+    const fielder = ball.fielder;
+    const bowler = ball.bowler;
     const lines = {
-      bowled: ['Clean bowled! The batter misses it completely and the stumps are shattered.', 'Castled! Right through the gate.'],
-      caught: ['Caught! Safe hands in the field.', 'Up in the air... and caught!'],
-      lbw: ['LBW! Plumb in front, that has to be out.', 'Struck on the pads — given LBW.'],
-      'run out': ["Run out! Direct hit, brilliant work in the field.", 'Mix-up between the wickets — run out!'],
-      stumped: ['Stumped! Quick hands behind the stumps.', 'Down the track and stumped!'],
-      'hit wicket': ['Hit wicket! Unlucky way to go.'],
+      bowled: [
+        `BOWLED HIM! What a delivery from ${bowler} — ${outName} had no answer, clean bowled!`,
+        `${bowler} strikes! Right through the gate, ${outName}'s stumps are shattered. Absolutely brilliant bowling!`,
+        `Castled! ${bowler} has ${outName}'s number today — that ball was unplayable!`,
+      ],
+      caught: [
+        fielder
+          ? `GOT HIM! ${bowler} induces the edge and ${fielder} makes no mistake — ${outName} has to go! Brilliant bowling, brilliant catch!`
+          : `Caught! ${bowler} gets the breakthrough — ${outName} departs.`,
+        fielder
+          ? `Up in the air... and ${fielder} completes the catch! ${bowler} strikes right when the team needed it, ${outName} walks back.`
+          : `Up in the air... and caught! ${bowler} removes ${outName}.`,
+      ],
+      lbw: [
+        `PLUMB! ${bowler} traps ${outName} dead in front — that has to be out, no doubt about it!`,
+        `Given LBW! A superb delivery from ${bowler} that ${outName} simply couldn't get across to.`,
+      ],
+      'run out': [
+        fielder
+          ? `RUN OUT! Brilliant fielding from ${fielder} — a direct hit and ${outName} is well short. What a piece of work!`
+          : `Run out! ${outName} is well short of the crease — costly mix-up.`,
+        `Mix-up between the wickets! ${outName} pays the price and is run out — that could be a turning point!`,
+      ],
+      stumped: [
+        fielder
+          ? `STUMPED! ${outName} steps out to ${bowler}, and ${fielder} whips the bails off in a flash — lightning quick!`
+          : `Stumped! ${bowler} lures ${outName} out of the crease.`,
+        `Down the track and stumped! ${bowler} has outfoxed ${outName} completely.`,
+      ],
+      'hit wicket': [`Hit wicket! ${outName} treads onto the stumps off ${bowler}'s bowling — unlucky way to go.`],
     };
-    return `🔴 WICKET! ${pickVariant(lines[ball.wicketType] || ['Out!'], seed)}`;
+    return `🔴 WICKET! ${pickVariant(lines[ball.wicketType] || [`${outName} is out!`], seed)}`;
   }
-  if (ball.extraType === 'wide') return `Wide ball! ${ball.runs > 0 ? 'They scamper through for extra runs.' : 'Extra run awarded.'}`;
-  if (ball.extraType === 'noball') return `No ball! Free hit coming up.${ball.runs > 0 ? ` And they get ${ball.runs} off the bat too!` : ''}`;
-  if (ball.extraType === 'bye') return `Byes — ${ball.runs} run${ball.runs === 1 ? '' : 's'} added to the total.`;
+
+  if (ball.extraType === 'wide') {
+    return ball.runs > 0
+      ? `Wide ball! ${batter} and the non-striker scamper through for extra runs.`
+      : 'Wide ball! Extra run awarded.';
+  }
+  if (ball.extraType === 'noball') {
+    return `No ball! Free hit coming up.${ball.runs > 0 ? ` And ${batter} middles it for ${ball.runs} off the free delivery too!` : ''}`;
+  }
+  if (ball.extraType === 'bye') return `Byes — ${batter} and partner run ${ball.runs}, added to the total.`;
   if (ball.extraType === 'legbye') return `Leg byes — ${ball.runs} run${ball.runs === 1 ? '' : 's'} added to the total.`;
 
   if (ball.runs === 6) {
-    const lines = ['SIX! Massive hit, sails way over the boundary!', 'SIX! Into the crowd, what a strike!'];
+    const lines = [
+      `SIX! Massive hit — ${batter} smashes it way over the boundary!`,
+      `SIX! ${batter} sends that into the crowd, what a strike!`,
+    ];
     return `6️⃣ ${pickVariant(lines, seed)}`;
   }
   if (ball.runs === 4) {
-    const lines = ['FOUR! Excellent shot, finds the gap beautifully.', 'FOUR! Races away to the boundary.'];
+    const lines = [
+      `FOUR! Excellent shot from ${batter}, finds the gap beautifully.`,
+      `FOUR! ${batter} races that away to the boundary.`,
+    ];
     return `4️⃣ ${pickVariant(lines, seed)}`;
   }
   if (ball.runs === 0) {
-    const lines = ['Good delivery, no run.', 'Dot ball — tight bowling.'];
+    const lines = [`Good delivery, ${batter} defends — no run.`, `Dot ball — tight bowling beats ${batter}.`];
     return pickVariant(lines, seed);
   }
-  return `${ball.runs} run${ball.runs === 1 ? '' : 's'} taken.`;
+  return `${batter} taps it away for ${ball.runs} run${ball.runs === 1 ? '' : 's'}.`;
 }
 
 function buildCommentaryFeed(innings) {
@@ -486,19 +517,19 @@ function computeAwards(match, inningsSummaries) {
   const qualifiedStrikers = batters.filter((b) => b.ballsFaced >= 6);
   const highestStrikeRate = qualifiedStrikers.length
     ? qualifiedStrikers.reduce((a, b) => {
-        const srA = a.ballsFaced > 0 ? a.runs / a.ballsFaced : 0;
-        const srB = b.ballsFaced > 0 ? b.runs / b.ballsFaced : 0;
-        return srB > srA ? b : a;
-      })
+      const srA = a.ballsFaced > 0 ? a.runs / a.ballsFaced : 0;
+      const srB = b.ballsFaced > 0 ? b.runs / b.ballsFaced : 0;
+      return srB > srA ? b : a;
+    })
     : null;
 
   const qualifiedBowlers = bowlers.filter((b) => b.legalBalls >= 6);
   const bestEconomy = qualifiedBowlers.length
     ? qualifiedBowlers.reduce((a, b) => {
-        const ecoA = a.legalBalls > 0 ? a.runsConceded / (a.legalBalls / 6) : Infinity;
-        const ecoB = b.legalBalls > 0 ? b.runsConceded / (b.legalBalls / 6) : Infinity;
-        return ecoB < ecoA ? b : a;
-      })
+      const ecoA = a.legalBalls > 0 ? a.runsConceded / (a.legalBalls / 6) : Infinity;
+      const ecoB = b.legalBalls > 0 ? b.runsConceded / (b.legalBalls / 6) : Infinity;
+      return ecoB < ecoA ? b : a;
+    })
     : null;
 
   const bestFielder = Object.keys(fieldingCredits).length
@@ -590,7 +621,7 @@ async function notifyMatchCreatorByEmail(match) {
     }
   }
 
-  const frontendUrl = (process.env.CLIENT_URL || 'http://localhost:3000').replace(/\/$/, '');
+  const frontendUrl = (process.env.CLIENT_URL || 'https://poll-verse-ai-delta.vercel.app').replace(/\/$/, '');
   const matchUrl = `${frontendUrl}/gully-cricket/match/${match._id}/summary`;
 
   await sendMatchScorecardEmail({
@@ -618,13 +649,6 @@ router.post('/matches/:id/start-innings', requireAuth, async (req, res) => {
 
     const match = await Match.findById(req.params.id);
     if (!match) return res.status(404).json({ message: 'Match not found' });
-
-    if (!checkMatchCreator(match, req.user)) {
-      return res.status(403).json({
-        message: `Forbidden: Only the match creator (${match.createdBy?.name || 'Creator'}) is authorized to update score.`,
-      });
-    }
-
     if (match.status === 'completed') return res.status(400).json({ message: 'This match has already finished.' });
 
     const inningsCount = match.innings.length;
@@ -658,16 +682,7 @@ router.post('/matches/:id/start-innings', requireAuth, async (req, res) => {
     match.markModified('innings');
     await match.save();
 
-    const inningsSummaries = match.innings.map((inn) => buildInningsSummary(match, inn));
-
-    const io = req.app.get('io');
-    if (io) {
-      io.emit(`match_update_${match._id}`, { match, innings: inningsSummaries });
-      io.emit('gully_match_updated', { matchId: match._id });
-    }
-
-    res.status(201).json({ match, innings: inningsSummaries });
-
+    res.status(201).json({ match, innings: match.innings.map((inn) => buildInningsSummary(match, inn)) });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
@@ -690,12 +705,6 @@ router.post('/matches/:id/ball', requireAuth, async (req, res) => {
 
     const match = await Match.findById(req.params.id);
     if (!match) return res.status(404).json({ message: 'Match not found' });
-
-    if (!checkMatchCreator(match, req.user)) {
-      return res.status(403).json({
-        message: `Forbidden: Only the match creator (${match.createdBy?.name || 'Creator'}) is authorized to update score.`,
-      });
-    }
 
     const innings = match.innings[match.innings.length - 1];
     if (!innings || innings.isComplete) {
@@ -808,21 +817,12 @@ router.post('/matches/:id/ball', requireAuth, async (req, res) => {
       });
     }
 
-    const finalSummaries = match.innings.map((inn) => buildInningsSummary(match, inn));
-
-    const io = req.app.get('io');
-    if (io) {
-      io.emit(`match_update_${match._id}`, { match, innings: finalSummaries });
-      io.emit('gully_match_updated', { matchId: match._id });
-    }
-
     res.json({
       match,
-      innings: finalSummaries,
+      innings: match.innings.map((inn) => buildInningsSummary(match, inn)),
       inningsJustEnded,
       matchComplete: match.status === 'completed',
     });
-
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
