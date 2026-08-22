@@ -58,6 +58,25 @@ const matchSchema = new mongoose.Schema({
     type: String,
     default: '',
   },
+  // 'teamA' | 'teamB' | 'tie' | null — structured winner, so downstream
+  // consumers (like the tournament points table) don't need to parse the
+  // human-readable `result` string.
+  winner: {
+    type: String,
+    enum: ['teamA', 'teamB', 'tie', null],
+    default: null,
+  },
+  // Set when this match was started from a tournament fixture rather than
+  // created standalone.
+  tournamentId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Tournament',
+    default: null,
+  },
+  tournamentMatchNumber: {
+    type: Number,
+    default: null,
+  },
   awards: {
     type: mongoose.Schema.Types.Mixed,
     default: null,
@@ -66,6 +85,22 @@ const matchSchema = new mongoose.Schema({
   // totals, batting/bowling figures will live here once scoring is built.
   innings: {
     type: [mongoose.Schema.Types.Mixed],
+    default: [],
+  },
+  isLiveStreaming: {
+    type: Boolean,
+    default: false,
+  },
+  streamUrl: {
+    type: String,
+    default: '',
+  },
+  activeMicroPoll: {
+    type: mongoose.Schema.Types.Mixed,
+    default: null, // { question: String, options: [{ text: String, votes: Number }], voterIds: [String], isActive: Boolean }
+  },
+  chatMessages: {
+    type: [mongoose.Schema.Types.Mixed], // [{ id, userName, text, reactionEmoji, timestamp }]
     default: [],
   },
   createdBy: {

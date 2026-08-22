@@ -1,0 +1,195 @@
+.pb-bracket {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  overflow-x: auto;
+  padding: 20px 10px;
+  background: radial-gradient(ellipse at center, rgba(108, 99, 255, 0.06), transparent 70%);
+  border-radius: var(--radius-lg);
+}
+
+.pb-column {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-width: 220px;
+  position: relative;
+  padding-right: 30px;
+}
+
+.pb-column-mid {
+  justify-content: center;
+  padding-right: 30px;
+}
+
+.pb-column-final {
+  justify-content: center;
+}
+
+.pb-mid-spacer,
+.pb-final-spacer {
+  height: 0;
+}
+
+/* Bracket connector lines — classic bracket CSS trick using borders */
+.pb-connector {
+  position: absolute;
+  right: 0;
+  width: 16px;
+  border-color: var(--border);
+  border-style: solid;
+  border-width: 0;
+}
+
+.pb-connector-top {
+  top: 25%;
+  height: 25%;
+  border-right-width: 2px;
+  border-top-width: 2px;
+}
+
+.pb-connector-bottom {
+  bottom: 25%;
+  height: 25%;
+  border-right-width: 2px;
+  border-bottom-width: 2px;
+}
+
+/* Match box */
+.pb-box {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 14px 16px;
+  min-width: 210px;
+  margin-bottom: 12px;
+}
+
+.pb-box-empty {
+  opacity: 0.5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 90px;
+}
+
+.pb-box-green { border-left: 3px solid #22c55e; }
+.pb-box-red { border-left: 3px solid #ef4444; }
+.pb-box-amber { border-left: 3px solid #f59e0b; }
+.pb-box-gold { border-left: 3px solid #fbbf24; box-shadow: 0 0 24px rgba(251, 191, 36, 0.15); }
+
+.pb-box-completed {
+  opacity: 0.75;
+}
+
+.pb-box-label {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+  margin-bottom: 10px;
+}
+
+.pb-box-tbd {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.pb-team-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-radius: var(--radius-sm);
+  padding: 4px;
+}
+
+.pb-clickable {
+  cursor: pointer;
+}
+
+.pb-clickable:hover {
+  background: var(--bg-tertiary);
+}
+
+.pb-team {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pb-team-logo {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.pb-team-logo-fallback {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6c63ff, #4c46b6);
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.pb-team-name {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pb-box-meta {
+  margin-top: 10px;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.pb-status-completed {
+  color: #22c55e;
+}
+
+.pb-status-live {
+  color: #ef4444;
+}
+
+.pb-rematch-btn {
+  margin-top: 10px;
+  width: 100%;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #ef4444;
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.pb-rematch-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+}
+
+@media (max-width: 700px) {
+  .pb-bracket {
+    flex-direction: column;
+  }
+  .pb-column {
+    padding-right: 0;
+    padding-bottom: 20px;
+  }
+  .pb-connector {
+    display: none;
+  }
+}

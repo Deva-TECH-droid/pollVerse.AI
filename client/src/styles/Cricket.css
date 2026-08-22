@@ -1,0 +1,979 @@
+/* Cricbuzz-Style Live Cricket Hub Styles */
+
+.ck-container {
+  max-width: 1050px;
+  margin: 0 auto;
+  padding: 32px 20px 80px;
+  font-family: inherit;
+}
+
+.ck-accent {
+  color: #10b981; /* Cricbuzz Emerald Green */
+}
+
+/* ---------------------------------------------------------------------------
+   Top Live Match Ticker / Strip
+--------------------------------------------------------------------------- */
+.ck-ticker-wrapper {
+  margin-bottom: 28px;
+  background: rgba(16, 185, 129, 0.05);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: 14px;
+  padding: 14px 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.ck-ticker-title {
+  font-size: 0.75rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  color: #10b981;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ck-ticker-scroll {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  scrollbar-width: thin;
+  scrollbar-color: #10b981 transparent;
+}
+
+.ck-ticker-scroll::-webkit-scrollbar {
+  height: 4px;
+}
+.ck-ticker-scroll::-webkit-scrollbar-thumb {
+  background: #10b981;
+  border-radius: 999px;
+}
+
+.ck-ticker-card {
+  flex: 0 0 250px;
+  background: var(--bg-secondary, #1e1e24);
+  border: 1px solid var(--border, #2d2d38);
+  border-radius: 10px;
+  padding: 12px 14px;
+  text-decoration: none;
+  color: var(--text-primary, #fff);
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.ck-ticker-card:hover {
+  transform: translateY(-2px);
+  border-color: #10b981;
+}
+
+.ck-ticker-empty {
+  font-size: 0.82rem;
+  color: var(--text-muted, #9ca3af);
+  margin: 4px 0;
+}
+
+.ck-ticker-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.ck-ticker-series {
+  font-size: 0.68rem;
+  color: var(--text-muted, #9ca3af);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 170px;
+}
+
+.ck-ticker-live-badge {
+  font-size: 0.62rem;
+  font-weight: 800;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.15);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.ck-ticker-teams {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.ck-ticker-team-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.82rem;
+}
+
+.ck-ticker-score {
+  color: #10b981;
+  font-size: 0.82rem;
+}
+
+.ck-ticker-status {
+  font-size: 0.7rem;
+  color: var(--text-secondary, #d1d5db);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------------------------------------------------------------------------
+   Hero & Header Controls
+--------------------------------------------------------------------------- */
+.ck-hero {
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.ck-hero-badge {
+  display: inline-block;
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  padding: 4px 14px;
+  border-radius: 999px;
+  margin-bottom: 10px;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.ck-title {
+  font-size: clamp(1.8rem, 4vw, 2.5rem);
+  font-weight: 900;
+  color: var(--text-primary, #ffffff);
+  margin-bottom: 6px;
+}
+
+.ck-subtitle {
+  color: var(--text-secondary, #9ca3af);
+  font-size: 0.92rem;
+  max-width: 620px;
+  margin: 0 auto 20px;
+  line-height: 1.4;
+}
+
+.ck-live-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.ck-refresh-btn {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border: 1px solid #10b981;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ck-refresh-btn:hover {
+  background: #10b981;
+  color: #fff;
+}
+
+.ck-toggle-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: var(--text-secondary, #d1d5db);
+  cursor: pointer;
+}
+
+.ck-pulse-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background: #ef4444;
+  border-radius: 50%;
+  animation: ck-pulse 1.4s infinite;
+  vertical-align: middle;
+  margin-left: 4px;
+}
+
+@keyframes ck-pulse {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+  70% { transform: scale(1.1); box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+.ck-time-tag {
+  font-size: 0.75rem;
+  color: var(--text-muted, #6b7280);
+}
+
+/* Search Bar */
+.ck-search-filter-wrap {
+  margin-bottom: 20px;
+}
+
+.ck-search-box {
+  display: flex;
+  align-items: center;
+  background: var(--bg-secondary, #1e1e24);
+  border: 1px solid var(--border, #2d2d38);
+  border-radius: 12px;
+  padding: 10px 16px;
+  gap: 10px;
+  transition: border-color 0.2s ease;
+}
+
+.ck-search-box:focus-within {
+  border-color: #10b981;
+}
+
+.ck-search-box input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-primary, #fff);
+  font-size: 0.9rem;
+  outline: none;
+}
+
+.ck-clear-search {
+  background: transparent;
+  border: none;
+  color: var(--text-muted, #6b7280);
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+/* Tabs & Format Pills */
+.ck-tabs {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.ck-tab-btn {
+  background: var(--bg-secondary, #1e1e24);
+  border: 1px solid var(--border, #2d2d38);
+  border-radius: 999px;
+  padding: 9px 22px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-secondary, #9ca3af);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ck-tab-btn.active {
+  background: #10b981;
+  border-color: #10b981;
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);
+}
+
+.ck-format-filters {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 28px;
+}
+
+.ck-format-pill {
+  background: transparent;
+  border: 1px solid var(--border, #2d2d38);
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted, #9ca3af);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ck-format-pill.active,
+.ck-format-pill:hover {
+  border-color: #10b981;
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.08);
+}
+
+/* ---------------------------------------------------------------------------
+   Match Cards Grid
+--------------------------------------------------------------------------- */
+.ck-match-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+.ck-match-card {
+  background: var(--bg-secondary, #1e1e24);
+  border: 1px solid var(--border, #2d2d38);
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.ck-match-card.is-live-card {
+  border-color: rgba(239, 68, 68, 0.4);
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.08);
+}
+
+.ck-match-card:hover {
+  transform: translateY(-3px);
+  border-color: #10b981;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.ck-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.ck-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ck-card-series {
+  font-size: 0.72rem;
+  color: var(--text-muted, #9ca3af);
+  font-weight: 600;
+}
+
+.ck-card-type-badge {
+  font-size: 0.62rem;
+  font-weight: 800;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: var(--text-secondary, #d1d5db);
+}
+
+.ck-live-badge {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  font-size: 0.7rem;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.ck-completed-badge {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 999px;
+}
+
+.ck-upcoming-badge {
+  background: rgba(59, 130, 246, 0.15);
+  color: #3b82f6;
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 999px;
+}
+
+.ck-match-title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--text-primary, #ffffff);
+  margin-bottom: 16px;
+  line-height: 1.3;
+}
+
+.ck-teams-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 16px;
+}
+
+.ck-team-block {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ck-team-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ck-flag {
+  font-size: 1.3rem;
+}
+
+.ck-team-name {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text-primary, #fff);
+}
+
+.ck-score-wrap {
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+}
+
+.ck-main-score {
+  font-weight: 800;
+  font-size: 0.98rem;
+  color: #10b981;
+}
+
+.ck-sub-score {
+  font-size: 0.72rem;
+  color: var(--text-muted, #9ca3af);
+}
+
+.ck-vs-divider {
+  text-align: center;
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: var(--text-muted, #6b7280);
+  letter-spacing: 0.1em;
+}
+
+.ck-card-status-bar {
+  margin-bottom: 16px;
+}
+
+.ck-match-status {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: #38bdf8;
+  margin-bottom: 4px;
+}
+
+.ck-match-venue {
+  font-size: 0.75rem;
+  color: var(--text-muted, #9ca3af);
+}
+
+.ck-btn-primary {
+  display: block;
+  text-align: center;
+  background: #10b981;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 10px;
+  border-radius: 10px;
+  text-decoration: none;
+  transition: background 0.2s ease;
+}
+
+.ck-btn-primary:hover {
+  background: #059669;
+}
+
+/* ---------------------------------------------------------------------------
+   Match Details Page
+--------------------------------------------------------------------------- */
+.ck-back-link {
+  display: inline-block;
+  color: #10b981;
+  font-size: 0.88rem;
+  font-weight: 700;
+  text-decoration: none;
+  margin-bottom: 20px;
+  transition: transform 0.2s ease;
+}
+
+.ck-back-link:hover {
+  transform: translateX(-4px);
+}
+
+.ck-detail-hero {
+  background: var(--bg-secondary, #1e1e24);
+  border: 1px solid var(--border, #2d2d38);
+  border-radius: 18px;
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.ck-hero-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.ck-hero-series {
+  font-size: 0.8rem;
+  color: var(--text-muted, #9ca3af);
+  font-weight: 600;
+}
+
+.ck-detail-title {
+  font-size: 1.6rem;
+  font-weight: 900;
+  color: var(--text-primary, #fff);
+  margin-bottom: 6px;
+}
+
+.ck-detail-venue {
+  font-size: 0.85rem;
+  color: var(--text-secondary, #9ca3af);
+  margin-bottom: 20px;
+}
+
+.ck-score-summary-grid {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 16px;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 14px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.ck-team-score-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.ck-team-flag-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.ck-large-flag {
+  font-size: 1.8rem;
+}
+
+.ck-team-title {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--text-primary, #fff);
+}
+
+.ck-score-display {
+  font-size: 1.3rem;
+  font-weight: 900;
+  color: #10b981;
+}
+
+.ck-score-detail {
+  font-size: 0.75rem;
+  color: var(--text-muted, #9ca3af);
+  margin-top: 4px;
+}
+
+.ck-vs-badge {
+  font-size: 0.8rem;
+  font-weight: 900;
+  color: var(--text-muted, #6b7280);
+}
+
+.ck-hero-status-bar {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  border-top: 1px solid var(--border, #2d2d38);
+  padding-top: 14px;
+  font-size: 0.88rem;
+}
+
+.ck-status-text {
+  font-weight: 700;
+  color: #38bdf8;
+}
+
+.ck-toss-text {
+  color: var(--text-secondary, #9ca3af);
+}
+
+/* Sub-tabs */
+.ck-tabs.detail-tabs {
+  justify-content: flex-start;
+}
+
+/* Innings Selector (Test matches) */
+.ck-innings-selector {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  margin-bottom: 18px;
+  padding-bottom: 4px;
+}
+
+.ck-innings-pill {
+  background: var(--bg-secondary, #1e1e24);
+  border: 1px solid var(--border, #2d2d38);
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-secondary, #9ca3af);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.ck-innings-pill.active {
+  background: #10b981;
+  border-color: #10b981;
+  color: #fff;
+}
+
+/* Scorecard Inning Block */
+.ck-innings-block {
+  background: var(--bg-secondary, #1e1e24);
+  border: 1px solid var(--border, #2d2d38);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.ck-innings-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border, #2d2d38);
+  padding-bottom: 12px;
+}
+
+.ck-innings-title {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--text-primary, #fff);
+}
+
+.ck-innings-total {
+  font-size: 1.1rem;
+  font-weight: 900;
+  color: #10b981;
+}
+
+.ck-table-section {
+  margin-bottom: 24px;
+}
+
+.ck-table-heading {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--text-secondary, #d1d5db);
+  margin-bottom: 10px;
+}
+
+.ck-table-wrap {
+  overflow-x: auto;
+}
+
+.ck-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+}
+
+.ck-table th {
+  text-align: left;
+  color: var(--text-muted, #9ca3af);
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border, #2d2d38);
+  font-weight: 700;
+}
+
+.ck-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border, #2d2d38);
+  color: var(--text-secondary, #d1d5db);
+}
+
+.ck-num {
+  text-align: right;
+  font-weight: 600;
+}
+
+.highlight-runs {
+  color: #10b981;
+  font-weight: 800;
+}
+
+.highlight-wickets {
+  color: #ef4444;
+  font-weight: 800;
+}
+
+.ck-player-name {
+  font-weight: 700;
+  color: var(--text-primary, #fff);
+}
+
+.ck-dismissal {
+  font-size: 0.75rem;
+  color: var(--text-muted, #9ca3af);
+}
+
+/* Live Commentary */
+.ck-comm-filter-bar {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.ck-comm-filter {
+  background: var(--bg-secondary, #1e1e24);
+  border: 1px solid var(--border, #2d2d38);
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-secondary, #9ca3af);
+  cursor: pointer;
+}
+
+.ck-comm-filter.active {
+  background: #38bdf8;
+  border-color: #38bdf8;
+  color: #fff;
+}
+
+.ck-commentary-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ck-comm-item {
+  display: flex;
+  gap: 14px;
+  background: var(--bg-secondary, #1e1e24);
+  border: 1px solid var(--border, #2d2d38);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+
+.ck-comm-over {
+  font-weight: 900;
+  font-size: 0.88rem;
+  color: #10b981;
+  min-width: 45px;
+}
+
+.ck-comm-body {
+  flex: 1;
+}
+
+.ck-badge-4 {
+  display: inline-block;
+  background: #3b82f6;
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 900;
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-bottom: 6px;
+}
+
+.ck-badge-6 {
+  display: inline-block;
+  background: #8b5cf6;
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 900;
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-bottom: 6px;
+}
+
+.ck-badge-w {
+  display: inline-block;
+  background: #ef4444;
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 900;
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-bottom: 6px;
+}
+
+.ck-comm-text {
+  font-size: 0.88rem;
+  color: var(--text-primary, #fff);
+  line-height: 1.4;
+}
+
+/* Match Info & Squads */
+.ck-section-title {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--text-primary, #fff);
+  margin-bottom: 16px;
+}
+
+.ck-info-block {
+  background: var(--bg-secondary, #1e1e24);
+  border: 1px solid var(--border, #2d2d38);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.ck-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+.ck-info-item {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.88rem;
+  border-bottom: 1px dashed var(--border, #2d2d38);
+  padding-bottom: 8px;
+}
+
+.ck-info-item .ck-label {
+  color: var(--text-muted, #9ca3af);
+}
+
+.ck-info-item .ck-val {
+  font-weight: 700;
+  color: var(--text-primary, #fff);
+}
+
+.ck-squads-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.ck-squad-card {
+  background: var(--bg-secondary, #1e1e24);
+  border: 1px solid var(--border, #2d2d38);
+  border-radius: 16px;
+  padding: 20px;
+}
+
+.ck-squad-card h4 {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #10b981;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--border, #2d2d38);
+  padding-bottom: 8px;
+}
+
+.ck-squad-card ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ck-squad-card li {
+  font-size: 0.85rem;
+  color: var(--text-secondary, #d1d5db);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Win Predictor */
+.ck-win-predictor-box {
+  background: var(--bg-secondary, #1e1e24);
+  border: 1px solid var(--border, #2d2d38);
+  border-radius: 16px;
+  padding: 24px;
+}
+
+.ck-win-labels {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 800;
+  font-size: 1rem;
+  color: var(--text-primary, #fff);
+  margin-bottom: 12px;
+}
+
+.ck-win-bar-bg {
+  width: 100%;
+  height: 16px;
+  background: #3b82f6;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.ck-win-bar-fill {
+  height: 100%;
+  background: #10b981;
+  transition: width 0.4s ease;
+}
+
+/* Empty & Loading states */
+.ck-loading-box {
+  text-align: center;
+  padding: 40px;
+}
+
+.ck-spinner {
+  width: 36px;
+  height: 36px;
+  border: 4px solid rgba(16, 185, 129, 0.2);
+  border-top-color: #10b981;
+  border-radius: 50%;
+  animation: ck-spin 0.8s linear infinite;
+  margin: 0 auto 14px;
+}
+
+@keyframes ck-spin {
+  to { transform: rotate(360deg); }
+}
+
+.ck-empty-state {
+  text-align: center;
+  padding: 50px 20px;
+  background: var(--bg-secondary, #1e1e24);
+  border: 1px dashed var(--border, #2d2d38);
+  border-radius: 16px;
+}
+
+.ck-empty-icon {
+  font-size: 3rem;
+  display: block;
+  margin-bottom: 10px;
+}
+
+.ck-error-box {
+  text-align: center;
+  padding: 30px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 12px;
+}

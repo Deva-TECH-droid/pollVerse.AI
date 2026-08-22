@@ -60,6 +60,8 @@ const authorizedParties = [
   'http://localhost:3000',
   'http://localhost:3001',
   process.env.CLIENT_URL,
+  'https://livepollverse.vercel.app',
+  'https://poll-verse-ai-d2f3.vercel.app',
   'https://poll-verse-ai-delta.vercel.app',
 ].filter(Boolean);
 
@@ -73,11 +75,62 @@ app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/comments', require('./routes/comments'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/gully-cricket', require('./routes/gullyCricket'));
+app.use('/api/gully-cricket/tournaments', require('./routes/tournament'));
+app.use('/api/cricket', require('./routes/internationalCricket'));
 
 // Health check endpoint
 app.get('/', (req, res) => {
   res.json({ status: 'PollVerse server is running 🚀', env: process.env.NODE_ENV });
 });
+
+// ---------------------------------------------------------------------------
+// Live spectator count for Gully Cricket matches — simple in-memory
+// tracking (fine for a single server; no Redis needed at this scale).
+// matchViewers: matchId -> Map<viewerId, activeSocketCount>
+// The per-viewer socket count is what makes multi-tab correct: the same
+// person opening 3 tabs still counts as 1 viewer, and the count only drops
+// once ALL of their tabs have closed/disconnected.
+// ---------------------------------------------------------------------------
+const matchViewers = new Map();
+// socket.id -> { matchId, viewerId } so disconnect can find what to clean up.
+const socketViewerInfo = new Map();
+
+function getMatchViewerCount(matchId) {
+  const viewers = matchViewers.get(matchId);
+  return viewers ? viewers.size : 0;
+}
+
+function broadcastViewerCount(matchId) {
+  io.to(`viewers:${matchId}`).emit('viewerCountUpdate', { matchId, count: getMatchViewerCount(matchId) });
+}
+
+function addViewer(matchId, viewerId, socketId) {
+  if (!matchViewers.has(matchId)) matchViewers.set(matchId, new Map());
+  const viewers = matchViewers.get(matchId);
+  const wasNew = !viewers.has(viewerId);
+  viewers.set(viewerId, (viewers.get(viewerId) || 0) + 1);
+  socketViewerInfo.set(socketId, { matchId, viewerId });
+  if (wasNew) broadcastViewerCount(matchId);
+}
+
+function removeViewerBySocket(socketId) {
+  const info = socketViewerInfo.get(socketId);
+  if (!info) return;
+  socketViewerInfo.delete(socketId);
+
+  const { matchId, viewerId } = info;
+  const viewers = matchViewers.get(matchId);
+  if (!viewers || !viewers.has(viewerId)) return;
+
+  const remaining = viewers.get(viewerId) - 1;
+  if (remaining <= 0) {
+    viewers.delete(viewerId);
+    if (viewers.size === 0) matchViewers.delete(matchId);
+    broadcastViewerCount(matchId);
+  } else {
+    viewers.set(viewerId, remaining);
+  }
+}
 
 // Socket.io events
 io.on('connection', (socket) => {
@@ -139,8 +192,31 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('joinMatchViewer', async ({ matchId, token }) => {
+    if (!matchId) return;
+    // Logged-in users get a stable id (so multi-tab collapses to 1 viewer);
+    // guests fall back to this socket's own id, matching the socket 1:1.
+    let viewerId = socket.id;
+    if (token) {
+      try {
+        const user = await verifySocketUser(token);
+        if (user) viewerId = String(user._id);
+      } catch (err) {
+        // Invalid/expired token — just treat them as a guest viewer.
+      }
+    }
+    socket.join(`viewers:${matchId}`);
+    addViewer(matchId, viewerId, socket.id);
+    socket.emit('viewerCountUpdate', { matchId, count: getMatchViewerCount(matchId) });
+  });
+
+  socket.on('leaveMatchViewer', () => {
+    removeViewerBySocket(socket.id);
+  });
+
   socket.on('disconnect', () => {
     console.log(`Client disconnected: ${socket.id}`);
+    removeViewerBySocket(socket.id);
   });
 });
 

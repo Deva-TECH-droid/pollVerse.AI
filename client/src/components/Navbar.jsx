@@ -55,16 +55,16 @@ function Navbar() {
             Polls
           </Link>
           <Link
+            to="/cricket"
+            className={`nav-link ${location.pathname.startsWith('/cricket') ? 'active' : ''}`}
+          >
+            🌍 Cricket
+          </Link>
+          <Link
             to="/ai-dashboard"
             className={`nav-link ${location.pathname === '/ai-dashboard' ? 'active' : ''}`}
           >
             🤖 AI Performance
-          </Link>
-          <Link
-            to="/gully-cricket"
-            className={`nav-link ${location.pathname.startsWith('/gully-cricket') ? 'active' : ''}`}
-          >
-            🏏 Gully Cricket
           </Link>
           <Link
             to="/leaderboard"

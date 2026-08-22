@@ -1,0 +1,188 @@
+.tc-root {
+  position: relative;
+  background: radial-gradient(ellipse at top, rgba(245, 158, 11, 0.18), transparent 65%), var(--bg-secondary);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  border-radius: var(--radius-lg);
+  padding: 40px 24px;
+  text-align: center;
+  margin-bottom: 28px;
+  overflow: hidden;
+}
+
+.tc-confetti-wrap {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.tc-confetti-piece {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+}
+
+.tc-trophy {
+  font-size: 4rem;
+  filter: drop-shadow(0 0 30px rgba(245, 158, 11, 0.8));
+}
+
+.tc-champions-label {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #f59e0b;
+  letter-spacing: 0.25em;
+  margin-top: 6px;
+}
+
+.tc-team-name {
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+  font-weight: 900;
+  color: var(--text-primary);
+  text-shadow: 0 0 30px rgba(245, 158, 11, 0.6);
+  margin: 6px 0 24px;
+}
+
+/* Roster */
+.tc-roster {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 28px;
+}
+
+.tc-roster-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.tc-roster-table-wrap {
+  overflow-x: auto;
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+.tc-roster-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #f59e0b;
+}
+
+.tc-roster-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.tc-roster-table th {
+  color: var(--text-muted);
+  font-weight: 700;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.tc-roster-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-secondary);
+  text-align: left;
+}
+
+.tc-roster-table td:first-child {
+  color: var(--text-primary);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.tc-team-awards-grid {
+  margin-bottom: 24px;
+}
+
+/* MVP card */
+.tc-mvp-card {
+  background: linear-gradient(160deg, rgba(245, 158, 11, 0.15), var(--bg-tertiary));
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  max-width: 480px;
+  margin: 0 auto 28px;
+}
+
+.tc-mvp-label {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #f59e0b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.tc-mvp-name {
+  font-size: 1.3rem;
+  font-weight: 900;
+  color: var(--text-primary);
+  margin: 6px 0 4px;
+}
+
+.tc-mvp-line {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+}
+
+.tc-mvp-explanation {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* Awards grid */
+.tc-awards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 14px;
+}
+
+.tc-award-card {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px 12px;
+}
+
+.tc-award-icon {
+  font-size: 1.6rem;
+}
+
+.tc-award-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 8px;
+}
+
+.tc-award-name {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-top: 4px;
+}
+
+.tc-award-stat {
+  font-size: 0.75rem;
+  color: #22c55e;
+  margin-top: 2px;
+}

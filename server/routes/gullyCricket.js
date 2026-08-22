@@ -517,19 +517,19 @@ function computeAwards(match, inningsSummaries) {
   const qualifiedStrikers = batters.filter((b) => b.ballsFaced >= 6);
   const highestStrikeRate = qualifiedStrikers.length
     ? qualifiedStrikers.reduce((a, b) => {
-      const srA = a.ballsFaced > 0 ? a.runs / a.ballsFaced : 0;
-      const srB = b.ballsFaced > 0 ? b.runs / b.ballsFaced : 0;
-      return srB > srA ? b : a;
-    })
+        const srA = a.ballsFaced > 0 ? a.runs / a.ballsFaced : 0;
+        const srB = b.ballsFaced > 0 ? b.runs / b.ballsFaced : 0;
+        return srB > srA ? b : a;
+      })
     : null;
 
   const qualifiedBowlers = bowlers.filter((b) => b.legalBalls >= 6);
   const bestEconomy = qualifiedBowlers.length
     ? qualifiedBowlers.reduce((a, b) => {
-      const ecoA = a.legalBalls > 0 ? a.runsConceded / (a.legalBalls / 6) : Infinity;
-      const ecoB = b.legalBalls > 0 ? b.runsConceded / (b.legalBalls / 6) : Infinity;
-      return ecoB < ecoA ? b : a;
-    })
+        const ecoA = a.legalBalls > 0 ? a.runsConceded / (a.legalBalls / 6) : Infinity;
+        const ecoB = b.legalBalls > 0 ? b.runsConceded / (b.legalBalls / 6) : Infinity;
+        return ecoB < ecoA ? b : a;
+      })
     : null;
 
   const bestFielder = Object.keys(fieldingCredits).length
@@ -796,11 +796,14 @@ router.post('/matches/:id/ball', requireAuth, async (req, res) => {
         if (summary.totalRuns >= target) {
           const wicketsInHand = battingPlayers.length - 1 - wicketsDown;
           match.result = `${match[innings.battingTeam].name} won by ${wicketsInHand} wicket${wicketsInHand === 1 ? '' : 's'}`;
+          match.winner = innings.battingTeam;
         } else if (summary.totalRuns === target - 1) {
           match.result = 'Match tied';
+          match.winner = 'tie';
         } else {
           const margin = match.firstInningsScore - summary.totalRuns;
           match.result = `${match[innings.bowlingTeam].name} won by ${margin} run${margin === 1 ? '' : 's'}`;
+          match.winner = innings.bowlingTeam;
         }
 
         const finalSummaries = match.innings.map((inn) => buildInningsSummary(match, inn));
@@ -812,9 +815,19 @@ router.post('/matches/:id/ball', requireAuth, async (req, res) => {
     await match.save();
 
     if (match.status === 'completed') {
-      notifyMatchCreatorByEmail(match).catch((err) => {
-        console.error('❌ Failed to send match scorecard email:', err);
-      });
+      if (!match.tournamentId) {
+        // Standalone matches only — tournament fixtures don't get this
+        // individual email, since the tournament has its own celebration
+        // summary at the end.
+        notifyMatchCreatorByEmail(match).catch((err) => {
+          console.error('❌ Failed to send match scorecard email:', err);
+        });
+      } else {
+        const { onTournamentMatchCompleted } = require('./tournament');
+        onTournamentMatchCompleted(match).catch((err) => {
+          console.error('❌ Failed to update tournament after match completion:', err);
+        });
+      }
     }
 
     res.json({
@@ -919,6 +932,151 @@ router.get('/players/:name', async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+// Toggle Live Video Stream for a match
+router.post('/matches/:id/stream', async (req, res) => {
+  try {
+    const { isLiveStreaming, streamUrl } = req.body;
+    const match = await Match.findById(req.params.id);
+    if (!match) return res.status(404).json({ message: 'Match not found' });
+
+    match.isLiveStreaming = Boolean(isLiveStreaming);
+    if (streamUrl !== undefined) match.streamUrl = streamUrl;
+    await match.save();
+
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`viewers:${match._id}`).emit('matchStreamUpdate', {
+        matchId: match._id,
+        isLiveStreaming: match.isLiveStreaming,
+        streamUrl: match.streamUrl,
+      });
+      io.emit('globalMatchStreamUpdate', {
+        matchId: match._id,
+        isLiveStreaming: match.isLiveStreaming,
+        name: `${match.teamA.name} vs ${match.teamB.name}`,
+      });
+    }
+
+    res.json({ message: 'Stream status updated', match });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to update stream status', error: err.message });
+  }
+});
+
+// Create Micro-Poll Live Prediction for a match
+router.post('/matches/:id/micro-poll', async (req, res) => {
+  try {
+    const { question, options } = req.body; // options: Array of strings e.g. ["Rahul", "Aman", "Rohit"]
+    const match = await Match.findById(req.params.id);
+    if (!match) return res.status(404).json({ message: 'Match not found' });
+
+    const formattedOptions = (options || ['Yes', 'No']).map((opt, idx) => ({
+      id: idx,
+      text: opt,
+      votes: 0,
+    }));
+
+    match.activeMicroPoll = {
+      id: Date.now().toString(),
+      question: question || 'Who will hit the next SIX?',
+      options: formattedOptions,
+      voterIds: [],
+      isActive: true,
+      totalVotes: 0,
+    };
+
+    await match.save();
+
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`viewers:${match._id}`).emit('newMicroPoll', {
+        matchId: match._id,
+        microPoll: match.activeMicroPoll,
+      });
+    }
+
+    res.json({ message: 'Micro poll created', microPoll: match.activeMicroPoll });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to create micro poll', error: err.message });
+  }
+});
+
+// Vote on Micro-Poll Prediction
+router.post('/matches/:id/micro-poll/vote', async (req, res) => {
+  try {
+    const { optionId, voterId } = req.body;
+    const match = await Match.findById(req.params.id);
+    if (!match || !match.activeMicroPoll || !match.activeMicroPoll.isActive) {
+      return res.status(400).json({ message: 'No active prediction poll' });
+    }
+
+    const poll = match.activeMicroPoll;
+    if (poll.voterIds && poll.voterIds.includes(voterId)) {
+      return res.status(400).json({ message: 'You have already voted on this prediction' });
+    }
+
+    const optIndex = poll.options.findIndex((o) => String(o.id) === String(optionId));
+    if (optIndex === -1) return res.status(400).json({ message: 'Invalid option' });
+
+    poll.options[optIndex].votes += 1;
+    poll.totalVotes = (poll.totalVotes || 0) + 1;
+    if (!poll.voterIds) poll.voterIds = [];
+    poll.voterIds.push(voterId);
+
+    match.markModified('activeMicroPoll');
+    await match.save();
+
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`viewers:${match._id}`).emit('microPollUpdated', {
+        matchId: match._id,
+        microPoll: match.activeMicroPoll,
+      });
+    }
+
+    res.json({ message: 'Vote recorded', microPoll: match.activeMicroPoll });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to record vote', error: err.message });
+  }
+});
+
+// Post Live Spectator Chat Message
+router.post('/matches/:id/chat', async (req, res) => {
+  try {
+    const { userName, text, reactionEmoji } = req.body;
+    const match = await Match.findById(req.params.id);
+    if (!match) return res.status(404).json({ message: 'Match not found' });
+
+    const newMsg = {
+      id: Date.now().toString() + Math.random().toString(36).substring(2, 5),
+      userName: userName || 'Cricket Fan',
+      text: text || '',
+      reactionEmoji: reactionEmoji || '',
+      timestamp: new Date(),
+    };
+
+    if (!match.chatMessages) match.chatMessages = [];
+    match.chatMessages.push(newMsg);
+    // Keep last 100 messages
+    if (match.chatMessages.length > 100) {
+      match.chatMessages = match.chatMessages.slice(-100);
+    }
+
+    await match.save();
+
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`viewers:${match._id}`).emit('newMatchChatMessage', {
+        matchId: match._id,
+        message: newMsg,
+      });
+    }
+
+    res.json({ message: 'Message sent', chatMessage: newMsg });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to send chat message', error: err.message });
   }
 });
 

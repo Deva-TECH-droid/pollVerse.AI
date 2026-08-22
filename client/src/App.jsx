@@ -18,6 +18,12 @@ import LiveScoringPage from './pages/LiveScoringPage';
 import MatchSummaryPage from './pages/MatchSummaryPage';
 import MatchHistoryPage from './pages/MatchHistoryPage';
 import PlayerProfilePage from './pages/PlayerProfilePage';
+import CreateTournamentPage from './pages/CreateTournamentPage';
+import TournamentDashboardPage from './pages/TournamentDashboardPage';
+import TournamentsListPage from './pages/TournamentsListPage';
+import CricketHomePage from './pages/CricketHomePage';
+import CricketMatchDetailPage from './pages/CricketMatchDetailPage';
+import LiveStreamPage from './pages/LiveStreamPage';
 import { AuthProvider } from './context/AuthContext';
 import { Toaster } from 'react-hot-toast';
 
@@ -44,9 +50,15 @@ function App() {
             <Route path="/gully-cricket/match/:id" element={<MatchDetailPage />} />
             <Route path="/gully-cricket/match/:id/score" element={<LiveScoringPage />} />
             <Route path="/gully-cricket/match/:id/summary" element={<MatchSummaryPage />} />
+            <Route path="/gully-cricket/match/:id/stream" element={<LiveStreamPage />} />
             <Route path="/gully-cricket/history" element={<MatchHistoryPage />} />
             <Route path="/gully-cricket/player/:name" element={<PlayerProfilePage />} />
             <Route path="/gully-cricket/player" element={<PlayerProfilePage />} />
+            <Route path="/gully-cricket/tournament/create" element={<CreateTournamentPage />} />
+            <Route path="/gully-cricket/tournament/:id" element={<TournamentDashboardPage />} />
+            <Route path="/gully-cricket/tournaments" element={<TournamentsListPage />} />
+            <Route path="/cricket" element={<CricketHomePage />} />
+            <Route path="/cricket/match/:id" element={<CricketMatchDetailPage />} />
           </Routes>
         </main>
       </Router>
