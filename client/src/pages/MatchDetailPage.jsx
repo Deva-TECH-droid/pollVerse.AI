@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { io } from 'socket.io-client';
+import { AuthContext } from '../context/AuthContext';
 import '../styles/GullyCricket.css';
 
 const API_URL = process.env.REACT_APP_API_URL || '';
@@ -8,7 +9,9 @@ const SOCKET_URL = process.env.REACT_APP_SOCKET_URL || 'http://localhost:5000';
 
 function MatchDetailPage() {
   const { id } = useParams();
+  const { user } = useContext(AuthContext);
   const [match, setMatch] = useState(null);
+  const [inningsSummaries, setInningsSummaries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [spectatorCount, setSpectatorCount] = useState(0);
@@ -20,6 +23,7 @@ function MatchDetailPage() {
         if (!res.ok) throw new Error('Match not found');
         const data = await res.json();
         setMatch(data.match);
+        setInningsSummaries(data.innings || []);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -40,6 +44,13 @@ function MatchDetailPage() {
     socket.on('matchStreamUpdate', ({ matchId, isLiveStreaming, streamUrl }) => {
       if (String(matchId) === String(id)) {
         setMatch((prev) => (prev ? { ...prev, isLiveStreaming, streamUrl } : prev));
+      }
+    });
+
+    socket.on('matchScoreUpdate', ({ matchId, match: updatedMatch, innings }) => {
+      if (String(matchId) === String(id)) {
+        setMatch(updatedMatch);
+        setInningsSummaries(innings || []);
       }
     });
 
@@ -70,9 +81,13 @@ function MatchDetailPage() {
   }
 
   const tossWinner = match[match.tossWonBy];
-  const latestInnings = match.innings && match.innings.length > 0 ? match.innings[match.innings.length - 1] : null;
+  const isCreator = Boolean(
+    user && match.createdBy?.email && user.email &&
+    match.createdBy.email.toLowerCase() === user.email.toLowerCase()
+  );
+  const latestInnings = inningsSummaries.length > 0 ? inningsSummaries[inningsSummaries.length - 1] : null;
   const currentScoreText = latestInnings
-    ? `${latestInnings.battingTeamName || 'Team'}: ${latestInnings.totalRuns}/${latestInnings.wickets} (${latestInnings.overs} ov)`
+    ? `${match[latestInnings.battingTeam]?.name || 'Team'}: ${latestInnings.totalRuns}/${latestInnings.totalWickets} (${latestInnings.oversDisplay} ov)`
     : 'Yet to start';
 
   return (
@@ -119,13 +134,13 @@ function MatchDetailPage() {
             to={match.status === 'completed' ? `/gully-cricket/match/${match._id}/summary` : `/gully-cricket/match/${match._id}/score`}
             className="gc-btn-action gc-btn-score"
           >
-            📊 [Start Scoring]
+            📊 [{match.status === 'completed' ? 'Match Summary' : (isCreator ? 'Start Scoring' : 'Live Score')}]
           </Link>
           <Link
             to={`/gully-cricket/match/${match._id}/stream`}
             className="gc-btn-action gc-btn-stream"
           >
-            🎥 [Start / Watch Live Stream]
+            🎥 [{isCreator ? 'Start / Watch Live Stream' : 'Watch Live Stream'}]
           </Link>
         </div>
       </div>

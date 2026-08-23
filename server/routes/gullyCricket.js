@@ -5,6 +5,27 @@ const { requireAuth } = require('../middleware/auth');
 const { generateMotmCertificate } = require('../utils/certificate');
 const { sendMatchScorecardEmail } = require('../utils/email');
 
+// Only the user who created a match may score it or control its live stream.
+function isMatchCreator(match, user) {
+  return Boolean(
+    match.createdBy &&
+    ((match.createdBy.userId && String(match.createdBy.userId) === String(user._id)) ||
+      (match.createdBy.email && user.email && match.createdBy.email.toLowerCase() === user.email.toLowerCase()))
+  );
+}
+
+// Pushes the fresh match state + innings summaries to everyone watching this
+// match (dashboard, scoreboard, stream hub) so scores update in real time.
+function broadcastScoreUpdate(req, match) {
+  const io = req.app.get('io');
+  if (!io) return;
+  io.to(`viewers:${match._id}`).emit('matchScoreUpdate', {
+    matchId: match._id,
+    match,
+    innings: match.innings.map((inn) => buildInningsSummary(match, inn)),
+  });
+}
+
 router.post('/matches', requireAuth, async (req, res) => {
   try {
     const { teamAName, teamBName, teamAPlayers, teamBPlayers, overs, tossWonBy, tossDecision } = req.body;
@@ -649,6 +670,9 @@ router.post('/matches/:id/start-innings', requireAuth, async (req, res) => {
 
     const match = await Match.findById(req.params.id);
     if (!match) return res.status(404).json({ message: 'Match not found' });
+    if (!isMatchCreator(match, req.user)) {
+      return res.status(403).json({ message: 'Only the match creator can score this match.' });
+    }
     if (match.status === 'completed') return res.status(400).json({ message: 'This match has already finished.' });
 
     const inningsCount = match.innings.length;
@@ -682,6 +706,8 @@ router.post('/matches/:id/start-innings', requireAuth, async (req, res) => {
     match.markModified('innings');
     await match.save();
 
+    broadcastScoreUpdate(req, match);
+
     res.status(201).json({ match, innings: match.innings.map((inn) => buildInningsSummary(match, inn)) });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
@@ -705,6 +731,9 @@ router.post('/matches/:id/ball', requireAuth, async (req, res) => {
 
     const match = await Match.findById(req.params.id);
     if (!match) return res.status(404).json({ message: 'Match not found' });
+    if (!isMatchCreator(match, req.user)) {
+      return res.status(403).json({ message: 'Only the match creator can score this match.' });
+    }
 
     const innings = match.innings[match.innings.length - 1];
     if (!innings || innings.isComplete) {
@@ -813,6 +842,8 @@ router.post('/matches/:id/ball', requireAuth, async (req, res) => {
 
     match.markModified('innings');
     await match.save();
+
+    broadcastScoreUpdate(req, match);
 
     if (match.status === 'completed') {
       if (!match.tournamentId) {
@@ -934,12 +965,15 @@ router.get('/players/:name', async (req, res) => {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 });
-// Toggle Live Video Stream for a match
-router.post('/matches/:id/stream', async (req, res) => {
+// Toggle Live Video Stream for a match — creator only
+router.post('/matches/:id/stream', requireAuth, async (req, res) => {
   try {
     const { isLiveStreaming, streamUrl } = req.body;
     const match = await Match.findById(req.params.id);
     if (!match) return res.status(404).json({ message: 'Match not found' });
+    if (!isMatchCreator(match, req.user)) {
+      return res.status(403).json({ message: 'Only the match creator can control the live stream.' });
+    }
 
     match.isLiveStreaming = Boolean(isLiveStreaming);
     if (streamUrl !== undefined) match.streamUrl = streamUrl;
@@ -965,12 +999,15 @@ router.post('/matches/:id/stream', async (req, res) => {
   }
 });
 
-// Create Micro-Poll Live Prediction for a match
-router.post('/matches/:id/micro-poll', async (req, res) => {
+// Create Micro-Poll Live Prediction for a match — creator only
+router.post('/matches/:id/micro-poll', requireAuth, async (req, res) => {
   try {
     const { question, options } = req.body; // options: Array of strings e.g. ["Rahul", "Aman", "Rohit"]
     const match = await Match.findById(req.params.id);
     if (!match) return res.status(404).json({ message: 'Match not found' });
+    if (!isMatchCreator(match, req.user)) {
+      return res.status(403).json({ message: 'Only the match creator can create predictions.' });
+    }
 
     const formattedOptions = (options || ['Yes', 'No']).map((opt, idx) => ({
       id: idx,
