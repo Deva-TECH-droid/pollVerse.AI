@@ -1001,6 +1001,23 @@
   font-weight: 700;
 }
 
+.gc-chat-score-pill {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.12);
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.gc-stream-waiting-note {
+  font-size: 0.8rem;
+  color: var(--text-muted, #9ca3af);
+  max-width: 420px;
+  margin: 8px auto 0;
+}
+
 /* Micro-Poll Body */
 .gc-micropoll-body {
   flex: 1;

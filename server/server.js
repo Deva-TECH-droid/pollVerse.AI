@@ -16,6 +16,7 @@ const { verifySocketUser } = require('./middleware/auth');
 const { startPollCloseJob } = require('./jobs/closePolls');
 const Poll = require('./models/Poll');
 const Vote = require('./models/Vote');
+const Match = require('./models/Match');
 
 // Connect to MongoDB
 connectDB();
@@ -94,6 +95,14 @@ app.get('/', (req, res) => {
 const matchViewers = new Map();
 // socket.id -> { matchId, viewerId } so disconnect can find what to clean up.
 const socketViewerInfo = new Map();
+
+// ---------------------------------------------------------------------------
+// WebRTC live-stream signaling — the match creator's browser is the
+// broadcaster; each viewer gets its own peer connection to it. The server
+// only relays SDP offers/answers and ICE candidates.
+// matchBroadcasters: matchId -> broadcaster socket.id
+// ---------------------------------------------------------------------------
+const matchBroadcasters = new Map();
 
 function getMatchViewerCount(matchId) {
   const viewers = matchViewers.get(matchId);
@@ -214,9 +223,64 @@ io.on('connection', (socket) => {
     removeViewerBySocket(socket.id);
   });
 
+  // Creator registers as this match's stream broadcaster (creator-verified).
+  socket.on('broadcasterReady', async ({ matchId, token }) => {
+    if (!matchId || !token) return;
+    try {
+      const user = await verifySocketUser(token);
+      if (!user) return;
+      const match = await Match.findById(matchId);
+      if (!match || !match.createdBy) return;
+      const isCreator =
+        (match.createdBy.userId && String(match.createdBy.userId) === String(user._id)) ||
+        (match.createdBy.email && user.email && match.createdBy.email.toLowerCase() === user.email.toLowerCase());
+      if (!isCreator) return;
+
+      matchBroadcasters.set(String(matchId), socket.id);
+      socket.data.broadcastingMatchId = String(matchId);
+      io.to(`viewers:${matchId}`).emit('broadcasterAvailable', { matchId });
+    } catch (err) {
+      console.error('broadcasterReady error:', err.message);
+    }
+  });
+
+  socket.on('broadcasterStopped', ({ matchId }) => {
+    if (matchBroadcasters.get(String(matchId)) === socket.id) {
+      matchBroadcasters.delete(String(matchId));
+      socket.data.broadcastingMatchId = null;
+      io.to(`viewers:${matchId}`).emit('broadcasterDisconnected', { matchId });
+    }
+  });
+
+  // A viewer asks to watch — forward the request to the broadcaster.
+  socket.on('watcherRequestStream', ({ matchId }) => {
+    const broadcasterId = matchBroadcasters.get(String(matchId));
+    if (broadcasterId) {
+      io.to(broadcasterId).emit('watcherJoin', { watcherId: socket.id });
+    } else {
+      socket.emit('broadcasterUnavailable', { matchId });
+    }
+  });
+
+  // Plain relays between broadcaster and watchers.
+  socket.on('webrtcOffer', ({ target, sdp }) => {
+    if (target) io.to(target).emit('webrtcOffer', { from: socket.id, sdp });
+  });
+  socket.on('webrtcAnswer', ({ target, sdp }) => {
+    if (target) io.to(target).emit('webrtcAnswer', { from: socket.id, sdp });
+  });
+  socket.on('webrtcIceCandidate', ({ target, candidate }) => {
+    if (target) io.to(target).emit('webrtcIceCandidate', { from: socket.id, candidate });
+  });
+
   socket.on('disconnect', () => {
     console.log(`Client disconnected: ${socket.id}`);
     removeViewerBySocket(socket.id);
+    const matchId = socket.data.broadcastingMatchId;
+    if (matchId && matchBroadcasters.get(matchId) === socket.id) {
+      matchBroadcasters.delete(matchId);
+      io.to(`viewers:${matchId}`).emit('broadcasterDisconnected', { matchId });
+    }
   });
 });
 

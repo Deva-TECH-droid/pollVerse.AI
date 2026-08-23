@@ -1,6 +1,9 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useContext } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { io } from 'socket.io-client';
+import { useAuth } from '@clerk/clerk-react';
+import { AuthContext } from '../context/AuthContext';
+import { createBroadcaster, createWatcher } from '../utils/liveStreamRtc';
 import '../styles/GullyCricket.css';
 
 const API_URL = process.env.REACT_APP_API_URL || '';
@@ -8,7 +11,11 @@ const SOCKET_URL = process.env.REACT_APP_SOCKET_URL || 'http://localhost:5000';
 
 function LiveStreamPage() {
   const { id } = useParams();
+  const { getToken } = useAuth();
+  const { user } = useContext(AuthContext);
   const [match, setMatch] = useState(null);
+  const [inningsSummaries, setInningsSummaries] = useState([]);
+  const [watchingLive, setWatchingLive] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [spectatorCount, setSpectatorCount] = useState(1);
@@ -28,10 +35,18 @@ function LiveStreamPage() {
 
   const videoRef = useRef(null);
   const mediaStreamRef = useRef(null);
+  const broadcasterRef = useRef(null);
+  const watcherRef = useRef(null);
+  const remoteStreamRef = useRef(null);
   const chatBottomRef = useRef(null);
   const socketRef = useRef(null);
   const videoViewportRef = useRef(null);
   const [isLargeScreen, setIsLargeScreen] = useState(false);
+
+  const isCreator = Boolean(
+    user && match?.createdBy?.email && user.email &&
+    match.createdBy.email.toLowerCase() === user.email.toLowerCase()
+  );
 
   // Fetch Match Details
   const fetchMatchDetails = useCallback(async () => {
@@ -41,6 +56,7 @@ function LiveStreamPage() {
       const data = await res.json();
       const m = data.match;
       setMatch(m);
+      setInningsSummaries(data.innings || []);
       setIsStreaming(Boolean(m.isLiveStreaming));
       if (m.chatMessages) setChatMessages(m.chatMessages);
       if (m.activeMicroPoll) {
@@ -75,6 +91,14 @@ function LiveStreamPage() {
       }
     });
 
+    // Real-time score sync — pushed by the server on every scored ball.
+    socket.on('matchScoreUpdate', ({ matchId, match: updatedMatch, innings }) => {
+      if (String(matchId) === String(id)) {
+        setMatch(updatedMatch);
+        setInningsSummaries(innings || []);
+      }
+    });
+
     socket.on('newMatchChatMessage', ({ matchId, message }) => {
       if (String(matchId) === String(id)) {
         setChatMessages((prev) => [...prev, message]);
@@ -98,8 +122,62 @@ function LiveStreamPage() {
       socket.emit('leaveMatchViewer');
       socket.disconnect();
       stopCamera();
+      if (broadcasterRef.current) {
+        broadcasterRef.current.close();
+        broadcasterRef.current = null;
+      }
+      if (watcherRef.current) {
+        watcherRef.current.close();
+        watcherRef.current = null;
+      }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, fetchMatchDetails]);
+
+  // Viewers connect to the creator's WebRTC broadcast whenever the stream is
+  // live; the creator never watches their own broadcast.
+  useEffect(() => {
+    const socket = socketRef.current;
+    if (!socket || !match || isCreator) return;
+
+    if (!isStreaming) {
+      setWatchingLive(false);
+      remoteStreamRef.current = null;
+      if (videoRef.current) videoRef.current.srcObject = null;
+      return;
+    }
+
+    const watcher = createWatcher(socket, id, (stream) => {
+      remoteStreamRef.current = stream;
+      setWatchingLive(true);
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play().catch(() => {});
+      }
+    });
+    watcherRef.current = watcher;
+
+    const handleBroadcasterAvailable = ({ matchId }) => {
+      if (String(matchId) === String(id)) watcher.request();
+    };
+    const handleBroadcasterGone = ({ matchId }) => {
+      if (String(matchId) === String(id)) {
+        setWatchingLive(false);
+        remoteStreamRef.current = null;
+        if (videoRef.current) videoRef.current.srcObject = null;
+      }
+    };
+    socket.on('broadcasterAvailable', handleBroadcasterAvailable);
+    socket.on('broadcasterDisconnected', handleBroadcasterGone);
+
+    return () => {
+      socket.off('broadcasterAvailable', handleBroadcasterAvailable);
+      socket.off('broadcasterDisconnected', handleBroadcasterGone);
+      watcher.close();
+      if (watcherRef.current === watcher) watcherRef.current = null;
+      setWatchingLive(false);
+    };
+  }, [id, match, isCreator, isStreaming]);
 
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -116,6 +194,15 @@ function LiveStreamPage() {
       });
     }
   }, [cameraActive]);
+
+  // Attach the remote broadcast stream once the <video> element mounts for a
+  // watching viewer (the stream can arrive before the element renders).
+  useEffect(() => {
+    if (watchingLive && remoteStreamRef.current && videoRef.current) {
+      videoRef.current.srcObject = remoteStreamRef.current;
+      videoRef.current.play().catch(() => {});
+    }
+  }, [watchingLive]);
 
   // Start Camera Capture for Creator (Mobile Back Camera or Laptop Webcam)
   const startCamera = async (desiredFacingMode = facingMode) => {
@@ -144,10 +231,33 @@ function LiveStreamPage() {
       setFacingMode(desiredFacingMode);
       setCameraActive(true);
       await toggleStream(true);
+      await startBroadcasting();
     } catch (err) {
       alert('Camera access error: ' + err.message + '\n\nPlease ensure camera permissions are allowed in your browser URL bar.');
-      await toggleStream(true);
     }
+  };
+
+  // Register this browser as the match's WebRTC broadcaster (creator only).
+  const startBroadcasting = async () => {
+    try {
+      if (!broadcasterRef.current) {
+        broadcasterRef.current = createBroadcaster(socketRef.current, () => mediaStreamRef.current);
+      } else if (mediaStreamRef.current) {
+        broadcasterRef.current.replaceStream(mediaStreamRef.current);
+      }
+      const token = await getToken();
+      socketRef.current.emit('broadcasterReady', { matchId: id, token });
+    } catch (err) {
+      console.error('Failed to start broadcasting:', err);
+    }
+  };
+
+  const stopBroadcasting = () => {
+    if (broadcasterRef.current) {
+      broadcasterRef.current.close();
+      broadcasterRef.current = null;
+    }
+    if (socketRef.current) socketRef.current.emit('broadcasterStopped', { matchId: id });
   };
 
   const switchCameraMode = async () => {
@@ -163,17 +273,21 @@ function LiveStreamPage() {
     setCameraActive(false);
   };
 
-  // Toggle Stream status on backend
+  // Toggle Stream status on backend (creator only)
   const toggleStream = async (status) => {
     try {
+      const token = await getToken();
       const res = await fetch(`${API_URL}/api/gully-cricket/matches/${id}/stream`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ isLiveStreaming: status }),
       });
       if (res.ok) {
         setIsStreaming(status);
-        if (!status) stopCamera();
+        if (!status) {
+          stopCamera();
+          stopBroadcasting();
+        }
       }
     } catch (err) {
       console.error('Failed to toggle stream:', err);
@@ -225,9 +339,10 @@ function LiveStreamPage() {
     e.preventDefault();
     const optionsArray = pollOptionsText.split(',').map((s) => s.trim()).filter(Boolean);
     try {
+      const token = await getToken();
       await fetch(`${API_URL}/api/gully-cricket/matches/${id}/micro-poll`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           question: pollQuestion,
           options: optionsArray,
@@ -259,39 +374,47 @@ function LiveStreamPage() {
     );
   }
 
-  // Calculate Innings Score & CRR / RRR dynamically from match data
-  const latestInnings = match.innings && match.innings.length > 0 ? match.innings[match.innings.length - 1] : null;
+  // Live innings summaries come from the server's score engine (initial fetch
+  // + real-time matchScoreUpdate pushes), so every viewer sees exactly what
+  // the creator scored.
+  const latestInnings = inningsSummaries.length > 0 ? inningsSummaries[inningsSummaries.length - 1] : null;
 
-  const battingTeamKey = match.battingTeam || 'teamA';
-  const bowlingTeamKey = match.bowlingTeam || (battingTeamKey === 'teamA' ? 'teamB' : 'teamA');
+  const battingTeamKey = latestInnings?.battingTeam || match.battingTeam || 'teamA';
+  const bowlingTeamKey = latestInnings?.bowlingTeam || match.bowlingTeam || (battingTeamKey === 'teamA' ? 'teamB' : 'teamA');
   const battingTeamObj = match[battingTeamKey] || match.teamA;
   const bowlingTeamObj = match[bowlingTeamKey] || match.teamB;
 
-  const currentBattingName = latestInnings ? latestInnings.battingTeamName : battingTeamObj.name;
+  const currentBattingName = battingTeamObj.name;
   const runs = latestInnings ? latestInnings.totalRuns : 0;
-  const wickets = latestInnings ? latestInnings.wickets : 0;
-  const oversDone = latestInnings ? latestInnings.overs : 0;
-  const totalOvers = match.overs || 10;
-  const target = match.firstInningsScore ? match.firstInningsScore + 1 : null;
+  const wickets = latestInnings ? latestInnings.totalWickets : 0;
+  const oversDisplay = latestInnings ? latestInnings.oversDisplay : '0.0';
+  const target = latestInnings?.target || (match.firstInningsScore ? match.firstInningsScore + 1 : null);
 
-  const crr = oversDone > 0 ? (runs / oversDone).toFixed(2) : '0.00';
-  const remainingOvers = Math.max(0, totalOvers - oversDone);
-  const remainingRuns = target !== null ? Math.max(0, target - runs) : 0;
-  const rrr = target !== null && remainingOvers > 0 ? (remainingRuns / remainingOvers).toFixed(2) : '—';
+  const legalBalls = latestInnings?.legalBallCount || 0;
+  const crr = latestInnings?.requiredRunRate?.currentRunRate
+    ?? (legalBalls > 0 ? (runs / (legalBalls / 6)).toFixed(2) : '0.00');
+  const rrr = latestInnings?.requiredRunRate?.requiredRunRate ?? '—';
 
   // Extract Batter & Bowler info strictly from match's actual players
   const battingPlayers = battingTeamObj.players || [];
   const bowlingPlayers = bowlingTeamObj.players || [];
 
-  const battersFromCard = latestInnings?.battingCard?.filter((b) => !b.isOut)?.slice(0, 2);
-  const batters = (battersFromCard && battersFromCard.length > 0)
-    ? battersFromCard
+  const findBatter = (name) => latestInnings?.battingCard?.find((b) => b.name === name);
+  const strikerName = latestInnings?.current?.striker;
+  const nonStrikerName = latestInnings?.current?.nonStriker;
+  const batters = strikerName
+    ? [
+        { name: strikerName, runs: 0, ballsFaced: 0, ...(findBatter(strikerName) || {}) },
+        ...(nonStrikerName ? [{ name: nonStrikerName, runs: 0, ballsFaced: 0, ...(findBatter(nonStrikerName) || {}) }] : []),
+      ]
     : [
         { name: battingPlayers[0] || `${battingTeamObj.name} Batter 1`, runs: 0, ballsFaced: 0 },
         { name: battingPlayers[1] || `${battingTeamObj.name} Batter 2`, runs: 0, ballsFaced: 0 },
       ];
 
-  const bowlerFromCard = latestInnings?.bowlingCard?.slice(-1)[0];
+  const bowlerName = latestInnings?.current?.bowler;
+  const bowlerFromCard = (bowlerName && latestInnings?.bowlingCard?.find((b) => b.name === bowlerName))
+    || latestInnings?.bowlingCard?.slice(-1)[0];
   const bowler = bowlerFromCard || {
     name: bowlingPlayers[0] || `${bowlingTeamObj.name} Bowler 1`,
     wickets: 0,
@@ -332,18 +455,21 @@ function LiveStreamPage() {
       <div className={`gc-stream-video-box ${isLargeScreen ? 'is-large-box' : ''}`}>
         {/* Video Screen */}
         <div ref={videoViewportRef} className={`gc-video-viewport ${isLargeScreen ? 'is-large-viewport' : ''}`}>
-          {cameraActive ? (
+          {(cameraActive || watchingLive) ? (
             <video ref={videoRef} autoPlay playsInline muted className="gc-camera-feed" />
           ) : (
             <div className="gc-simulated-video">
               <div className="gc-video-placeholder-content">
                 <span className="gc-cricket-cam-icon">🎥</span>
-                <h3>{isStreaming ? 'LIVE MATCH BROADCAST' : 'STREAM OFFLINE'}</h3>
+                <h3>{isStreaming ? 'CONNECTING TO LIVE BROADCAST…' : 'STREAM OFFLINE'}</h3>
                 <p>{match.teamA.name} vs {match.teamB.name} · {match.overs} Overs Match</p>
-                {!isStreaming && (
+                {!isStreaming && isCreator && (
                   <button className="gc-start-cam-btn" onClick={() => startCamera(facingMode)}>
                     🎥 Start Camera Stream
                   </button>
+                )}
+                {!isStreaming && !isCreator && (
+                  <p className="gc-stream-waiting-note">The live stream will start when the match creator goes live. Scores update in real time below.</p>
                 )}
               </div>
             </div>
@@ -365,7 +491,7 @@ function LiveStreamPage() {
               <div className="gc-hud-main-runs">
                 <span className="gc-hud-team">{currentBattingName}</span>
                 <strong className="gc-hud-score">{runs}/{wickets}</strong>
-                <span className="gc-hud-overs">{oversDone} Overs</span>
+                <span className="gc-hud-overs">{oversDisplay} Overs</span>
               </div>
               <div className="gc-hud-rates">
                 <span>CRR: <strong>{crr}</strong></span>
@@ -376,28 +502,30 @@ function LiveStreamPage() {
           </div>
         </div>
 
-        {/* Creator Control Strip */}
-        <div className="gc-stream-control-strip">
-          {isStreaming ? (
-            <button className="gc-ctrl-btn gc-ctrl-stop" onClick={() => toggleStream(false)}>
-              ⏹️ Stop Live Stream
-            </button>
-          ) : (
-            <button className="gc-ctrl-btn gc-ctrl-start" onClick={() => startCamera(facingMode)}>
-              🎥 Start Live Stream
-            </button>
-          )}
+        {/* Creator Control Strip (only the match creator can broadcast) */}
+        {isCreator && (
+          <div className="gc-stream-control-strip">
+            {isStreaming ? (
+              <button className="gc-ctrl-btn gc-ctrl-stop" onClick={() => toggleStream(false)}>
+                ⏹️ Stop Live Stream
+              </button>
+            ) : (
+              <button className="gc-ctrl-btn gc-ctrl-start" onClick={() => startCamera(facingMode)}>
+                🎥 Start Live Stream
+              </button>
+            )}
 
-          {cameraActive && (
-            <button className="gc-ctrl-btn gc-ctrl-flip" onClick={switchCameraMode}>
-              🔄 Flip Cam ({facingMode === 'environment' ? 'Back 📷' : 'Front 👤'})
-            </button>
-          )}
+            {cameraActive && (
+              <button className="gc-ctrl-btn gc-ctrl-flip" onClick={switchCameraMode}>
+                🔄 Flip Cam ({facingMode === 'environment' ? 'Back 📷' : 'Front 👤'})
+              </button>
+            )}
 
-          <button className="gc-ctrl-btn gc-ctrl-poll" onClick={() => setShowPollModal(true)}>
-            🎯 Create Live Prediction
-          </button>
-        </div>
+            <button className="gc-ctrl-btn gc-ctrl-poll" onClick={() => setShowPollModal(true)}>
+              🎯 Create Live Prediction
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Current Batters & Bowler Section */}
@@ -464,9 +592,11 @@ function LiveStreamPage() {
           ) : (
             <div className="gc-no-poll">
               <p>No active prediction right now.</p>
-              <button className="gc-create-poll-link" onClick={() => setShowPollModal(true)}>
-                + Create Prediction Poll
-              </button>
+              {isCreator && (
+                <button className="gc-create-poll-link" onClick={() => setShowPollModal(true)}>
+                  + Create Prediction Poll
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -475,6 +605,7 @@ function LiveStreamPage() {
         <div className="gc-interactive-card gc-chat-card">
           <div className="gc-card-title-bar">
             <h3>💬 LIVE CHAT</h3>
+            <span className="gc-chat-score-pill">🏏 {currentBattingName} {runs}/{wickets} ({oversDisplay})</span>
             <span className="gc-spectator-pill">👥 {spectatorCount} watching</span>
           </div>
 
