@@ -12,7 +12,26 @@ const RTC_CONFIG = {
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
     { urls: 'stun:stun2.l.google.com:19302' },
+    { urls: 'stun:stun3.l.google.com:19302' },
+    { urls: 'stun:stun4.l.google.com:19302' },
+    // Open TURN relay for cross-network mobile→laptop streaming
+    {
+      urls: 'turn:openrelay.metered.ca:80',
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    },
+    {
+      urls: 'turn:openrelay.metered.ca:443',
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    },
+    {
+      urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    },
   ],
+  iceCandidatePoolSize: 10,
 };
 
 function LiveStreamPage() {
@@ -89,12 +108,12 @@ function LiveStreamPage() {
   // Clean up all WebRTC connections
   const cleanupWebRTC = useCallback(() => {
     peerConnectionsRef.current.forEach((pc) => {
-      try { pc.close(); } catch (e) {}
+      try { pc.close(); } catch (e) { }
     });
     peerConnectionsRef.current.clear();
 
     if (viewerPcRef.current) {
-      try { viewerPcRef.current.close(); } catch (e) {}
+      try { viewerPcRef.current.close(); } catch (e) { }
       viewerPcRef.current = null;
     }
     remoteMediaStreamRef.current = null;
@@ -113,16 +132,71 @@ function LiveStreamPage() {
     }
   }, [cleanupWebRTC, id]);
 
+  // Helper: Broadcaster creates and sends WebRTC offer to a specific viewer
+  const sendOfferToViewer = useCallback(async (socket, viewerSocketId) => {
+    try {
+      console.log(`🎥 Broadcaster creating offer for viewer ${viewerSocketId}`);
+      // Close stale connection for this viewer if any
+      const existingPc = peerConnectionsRef.current.get(viewerSocketId);
+      if (existingPc) { try { existingPc.close(); } catch (e) { } }
+
+      const pc = new RTCPeerConnection(RTC_CONFIG);
+      peerConnectionsRef.current.set(viewerSocketId, pc);
+
+      mediaStreamRef.current.getTracks().forEach((track) => {
+        pc.addTrack(track, mediaStreamRef.current);
+      });
+
+      pc.onicecandidate = (event) => {
+        if (event.candidate) {
+          socket.emit('streamIceCandidate', {
+            targetSocketId: viewerSocketId,
+            candidate: event.candidate,
+          });
+        }
+      };
+
+      pc.onconnectionstatechange = () => {
+        console.log(`WebRTC → viewer ${viewerSocketId}: ${pc.connectionState}`);
+      };
+
+      const offer = await pc.createOffer({ offerToReceiveAudio: false, offerToReceiveVideo: false });
+      await pc.setLocalDescription(offer);
+
+      socket.emit('streamOffer', {
+        matchId: id,
+        targetSocketId: viewerSocketId,
+        offer,
+      });
+    } catch (err) {
+      console.error('Error creating offer for viewer:', err);
+    }
+  }, [id]);
+
   // WebRTC & Socket Connection
   useEffect(() => {
     fetchMatchDetails();
 
-    const socket = io(SOCKET_URL, { transports: ['websocket', 'polling'] });
+    const socket = io(SOCKET_URL, {
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 500,
+      reconnectionDelayMax: 2000,
+    });
     socketRef.current = socket;
 
-    socket.emit('joinMatchViewer', { matchId: id });
-    // Tell broadcaster that a viewer joined to request live stream
-    socket.emit('streamViewerJoin', { matchId: id });
+    const joinRooms = () => {
+      socket.emit('joinMatchViewer', { matchId: id });
+      socket.emit('streamViewerJoin', { matchId: id });
+    };
+    joinRooms();
+
+    // Re-join rooms on reconnect so score updates resume immediately
+    socket.on('connect', () => {
+      console.log('🔗 Socket reconnected — rejoining match rooms');
+      joinRooms();
+    });
 
     // 1. Spectator count
     socket.on('viewerCountUpdate', ({ matchId, count }) => {
@@ -143,7 +217,7 @@ function LiveStreamPage() {
           else if (latestBall.runs === 4) alertText = '🔥 FOUR! (4 Runs)';
           else if (latestBall.extraType === 'wide') alertText = '⚡ WIDE BALL';
           else if (latestBall.extraType === 'noball') alertText = '⚡ NO BALL';
-          
+
           if (alertText) {
             setLastBallAlert(alertText);
             setTimeout(() => setLastBallAlert(null), 3500);
@@ -168,37 +242,25 @@ function LiveStreamPage() {
 
     // 4. WebRTC: Broadcaster receives notification of new viewer
     socket.on('streamViewerJoined', async ({ viewerSocketId }) => {
-      if (!mediaStreamRef.current || !viewerSocketId) return;
+      if (!viewerSocketId) return;
 
-      try {
-        console.log(`🎥 Broadcaster creating offer for viewer ${viewerSocketId}`);
-        const pc = new RTCPeerConnection(RTC_CONFIG);
-        peerConnectionsRef.current.set(viewerSocketId, pc);
-
-        mediaStreamRef.current.getTracks().forEach((track) => {
-          pc.addTrack(track, mediaStreamRef.current);
-        });
-
-        pc.onicecandidate = (event) => {
-          if (event.candidate) {
-            socket.emit('streamIceCandidate', {
-              targetSocketId: viewerSocketId,
-              candidate: event.candidate,
-            });
+      // If media isn't ready yet (broadcaster still loading camera), wait up to 5s
+      if (!mediaStreamRef.current) {
+        let retries = 0;
+        const waitForStream = setInterval(async () => {
+          retries++;
+          if (mediaStreamRef.current) {
+            clearInterval(waitForStream);
+            await sendOfferToViewer(socket, viewerSocketId);
+          } else if (retries >= 5) {
+            clearInterval(waitForStream);
+            console.warn('⚠️ Broadcaster stream not ready after 5s for viewer:', viewerSocketId);
           }
-        };
-
-        const offer = await pc.createOffer();
-        await pc.setLocalDescription(offer);
-
-        socket.emit('streamOffer', {
-          matchId: id,
-          targetSocketId: viewerSocketId,
-          offer,
-        });
-      } catch (err) {
-        console.error('Error creating offer for viewer:', err);
+        }, 1000);
+        return;
       }
+
+      await sendOfferToViewer(socket, viewerSocketId);
     });
 
     // 5. WebRTC: Broadcaster receives answer from viewer
@@ -218,7 +280,7 @@ function LiveStreamPage() {
       try {
         console.log('🎥 Viewer received stream offer from broadcaster');
         if (viewerPcRef.current) {
-          try { viewerPcRef.current.close(); } catch (e) {}
+          try { viewerPcRef.current.close(); } catch (e) { }
         }
 
         const pc = new RTCPeerConnection(RTC_CONFIG);
@@ -255,7 +317,7 @@ function LiveStreamPage() {
           const cand = iceCandidateQueueRef.current.shift();
           try {
             await pc.addIceCandidate(new RTCIceCandidate(cand));
-          } catch (e) {}
+          } catch (e) { }
         }
 
         const answer = await pc.createAnswer();
@@ -334,7 +396,13 @@ function LiveStreamPage() {
       stopCamera();
       cleanupWebRTC();
     };
-  }, [id, fetchMatchDetails, cleanupWebRTC, stopCamera]);
+  }, [
+    id,
+    fetchMatchDetails,
+    cleanupWebRTC,
+    stopCamera,
+    sendOfferToViewer
+  ]);
 
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
