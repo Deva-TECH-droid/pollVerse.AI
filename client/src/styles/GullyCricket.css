@@ -1387,10 +1387,343 @@
 
 .gc-video-viewport.is-large-viewport {
   height: 80vh !important;
-  max-height: 800px;
+  max-height: 850px;
 }
 
 .gc-stream-video-box.is-large-box {
   max-width: 100% !important;
 }
+
+/* ---------------------------------------------------------------------------
+   Post Match Creation Stream Choice Prompt Modal
+--------------------------------------------------------------------------- */
+.gc-stream-choice-modal {
+  max-width: 520px;
+  text-align: center;
+  padding: 32px 28px;
+  background: linear-gradient(145deg, #1c1c24, #121216);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+}
+
+.gc-stream-choice-badge {
+  display: inline-block;
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  margin-bottom: 12px;
+}
+
+.gc-stream-choice-title {
+  font-size: 1.45rem;
+  font-weight: 900;
+  color: #fff;
+  margin-bottom: 10px;
+  line-height: 1.25;
+}
+
+.gc-stream-choice-desc {
+  font-size: 0.88rem;
+  color: var(--text-muted, #9ca3af);
+  line-height: 1.45;
+  margin-bottom: 24px;
+}
+
+.gc-stream-choice-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+@media (max-width: 560px) {
+  .gc-stream-choice-actions {
+    grid-template-columns: 1fr;
+  }
+}
+
+.gc-choice-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 14px;
+  border-radius: 14px;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s ease;
+  color: #fff;
+}
+
+.gc-choice-btn strong {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.gc-choice-btn small {
+  display: block;
+  font-size: 0.72rem;
+  opacity: 0.85;
+  margin-top: 2px;
+}
+
+.gc-choice-icon {
+  font-size: 1.8rem;
+}
+
+.gc-choice-yes {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.35);
+}
+
+.gc-choice-yes:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(239, 68, 68, 0.5);
+}
+
+.gc-choice-no {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.35);
+}
+
+.gc-choice-no:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(37, 99, 235, 0.5);
+}
+
+/* ---------------------------------------------------------------------------
+   TV Broadcast HUD Overlays (Star Sports / Sky Sports Lower-Third Scoreboard)
+--------------------------------------------------------------------------- */
+.gc-hud-left-tags {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gc-hud-match-title-tag {
+  background: rgba(0, 0, 0, 0.65);
+  color: #f3f4f6;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(4px);
+}
+
+.gc-hud-broadcast-ribbon {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  background: rgba(10, 10, 14, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 12px;
+  overflow: hidden;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+  pointer-events: auto;
+}
+
+.gc-ribbon-score-tile {
+  background: linear-gradient(135deg, #1e3a8a, #1e1b4b);
+  padding: 8px 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border-right: 1px solid rgba(255, 255, 255, 0.15);
+  min-width: 140px;
+}
+
+.gc-ribbon-team-name {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #93c5fd;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.gc-ribbon-score-runs {
+  font-size: 1.4rem;
+  font-weight: 900;
+  color: #fff;
+  line-height: 1.1;
+}
+
+.gc-ribbon-overs {
+  font-size: 0.72rem;
+  color: #cbd5e1;
+}
+
+.gc-ribbon-stats-tile {
+  padding: 8px 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  font-size: 0.75rem;
+  color: #94a3b8;
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.gc-ribbon-stats-tile strong {
+  color: #fff;
+}
+
+.gc-ribbon-batters-tile {
+  padding: 6px 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
+  min-width: 160px;
+}
+
+.gc-ribbon-bowler-tile {
+  padding: 6px 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  min-width: 160px;
+}
+
+.gc-ribbon-player-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.76rem;
+}
+
+.gc-ribbon-batter-name, .gc-ribbon-bowler-name {
+  font-weight: 700;
+  color: #f1f5f9;
+  white-space: nowrap;
+}
+
+.gc-ribbon-player-score {
+  font-weight: 800;
+  color: #38bdf8;
+  white-space: nowrap;
+}
+
+.gc-ribbon-recent-over {
+  display: flex;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.gc-recent-ball-pill {
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.gc-recent-ball-pill.wkt {
+  background: #ef4444;
+  color: #fff;
+}
+
+.gc-recent-ball-pill.bound {
+  background: #10b981;
+  color: #fff;
+}
+
+/* Boundary & Wicket Alert Pop */
+.gc-ball-alert-banner {
+  position: absolute;
+  top: 45%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.95), rgba(185, 28, 28, 0.95));
+  color: #fff;
+  font-size: 1.4rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  padding: 10px 24px;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8), 0 0 25px rgba(239, 68, 68, 0.6);
+  z-index: 50;
+  pointer-events: none;
+  animation: gc-pop-alert 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes gc-pop-alert {
+  0% { transform: translate(-50%, -50%) scale(0.6); opacity: 0; }
+  100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+}
+
+.gc-striker-star {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.15);
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 6px;
+}
+
+.highlight-striker {
+  background: rgba(56, 189, 248, 0.08);
+  border-left: 3px solid #38bdf8;
+  padding-left: 8px;
+  border-radius: 4px;
+}
+
+/* Spectator Mode Banners */
+.gc-spectator-mode-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  border-radius: 14px;
+  padding: 14px 20px;
+  margin: 16px 0 24px;
+}
+
+.gc-spectator-badge {
+  display: inline-block;
+  background: #3b82f6;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 900;
+  padding: 2px 8px;
+  border-radius: 6px;
+  margin-bottom: 4px;
+}
+
+.gc-spectator-banner-content p {
+  font-size: 0.82rem;
+  color: var(--text-primary, #fff);
+  margin: 0;
+}
+
+.gc-spectator-scoring-banner {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #38bdf8;
+}
+
+.gc-stream-waiting-note {
+  font-size: 0.82rem;
+  color: #93c5fd;
+  margin-top: 10px;
+}
+
 

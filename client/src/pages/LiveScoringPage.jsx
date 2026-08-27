@@ -1,6 +1,6 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useAuth } from '@clerk/clerk-react';
+import { useAuth, useUser } from '@clerk/clerk-react';
 import socket from '../socket';
 import '../styles/GullyCricket.css';
 import '../styles/LiveScoring.css';
@@ -272,6 +272,7 @@ function NewBowlerModal({ bowlingPlayers, lastBowler, onConfirm }) {
 function LiveScoringPage() {
   const { id } = useParams();
   const { getToken } = useAuth();
+  const { user } = useUser();
   const [match, setMatch] = useState(null);
   const [inningsSummaries, setInningsSummaries] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -280,14 +281,17 @@ function LiveScoringPage() {
   const [pendingExtraType, setPendingExtraType] = useState(null);
   const [pendingRunTap, setPendingRunTap] = useState(null); // run value awaiting an optional shot direction
   const [pendingBowlerPick, setPendingBowlerPick] = useState(false);
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [cameraActive, setCameraActive] = useState(false);
-  const [facingMode, setFacingMode] = useState('environment'); // Default to Back Camera for ground filming
   const [viewerCount, setViewerCount] = useState(0);
+  const [isStreaming, setIsStreaming] = useState(false);
   const [scoring, setScoring] = useState(false);
   const [stashedBowler, setStashedBowler] = useState(null);
-  const videoRef = useRef(null);
-  const mediaStreamRef = useRef(null);
+
+  const isCreator = Boolean(
+    user && match?.createdBy?.userId && (
+      String(user.id) === String(match.createdBy.userId) ||
+      user.primaryEmailAddress?.emailAddress?.toLowerCase() === match.createdBy.email?.toLowerCase()
+    )
+  );
 
   const fetchMatch = useCallback(async () => {
     try {
@@ -306,103 +310,50 @@ function LiveScoringPage() {
 
   useEffect(() => {
     fetchMatch();
-    return () => {
-      stopCamera();
-    };
   }, [fetchMatch]);
 
-  // Attach camera stream whenever cameraActive turns true and <video> mounts
-  useEffect(() => {
-    if (cameraActive && mediaStreamRef.current && videoRef.current) {
-      videoRef.current.srcObject = mediaStreamRef.current;
-      videoRef.current.play().catch((err) => {
-        console.warn('Video auto-play error:', err.message);
-      });
-    }
-  }, [cameraActive]);
-
-  // Start Camera Capture for Creator (Mobile Back Camera or Laptop Webcam)
-  const startCamera = async (desiredFacingMode = facingMode) => {
-    stopCamera();
-    try {
-      let stream;
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: desiredFacingMode },
-          audio: false,
-        });
-      } catch (e1) {
-        try {
-          stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: desiredFacingMode === 'environment' ? 'user' : 'environment' },
-            audio: false,
-          });
-        } catch (e2) {
-          stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-        }
-      }
-
-      mediaStreamRef.current = stream;
-      setFacingMode(desiredFacingMode);
-      setCameraActive(true);
-      await toggleStream(true);
-    } catch (err) {
-      alert('Camera access error: ' + err.message + '\n\nPlease ensure camera permissions are allowed in your browser URL bar.');
-      await toggleStream(true);
-    }
-  };
-
-  const switchCameraMode = async () => {
-    const nextMode = facingMode === 'environment' ? 'user' : 'environment';
-    await startCamera(nextMode);
-  };
-
-  const stopCamera = () => {
-    if (mediaStreamRef.current) {
-      mediaStreamRef.current.getTracks().forEach((track) => track.stop());
-      mediaStreamRef.current = null;
-    }
-    setCameraActive(false);
-  };
-
-  const toggleStream = async (status) => {
-    try {
-      const res = await fetch(`${API_URL}/api/gully-cricket/matches/${id}/stream`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isLiveStreaming: status }),
-      });
-      if (res.ok) {
-        setIsStreaming(status);
-        if (!status) stopCamera();
-      }
-    } catch (err) {
-      console.error('Failed to toggle stream:', err);
-    }
-  };
-
-  // Live spectator count — join this match's viewer room, listen for
-  // updates, and leave cleanly when navigating away.
+  // Real-time socket listener for spectator count & score updates
   useEffect(() => {
     const join = async () => {
       let token = null;
       try {
         token = await getToken();
       } catch (err) {
-        // Not signed in — join as a guest viewer, that's fine.
+        // Not signed in — join as a guest viewer
       }
       socket.emit('joinMatchViewer', { matchId: id, token });
     };
     join();
 
     const handleViewerUpdate = (payload) => {
-      if (payload.matchId === id) setViewerCount(payload.count);
+      if (String(payload.matchId) === String(id)) setViewerCount(payload.count);
     };
     socket.on('viewerCountUpdate', handleViewerUpdate);
+
+    const handleStreamUpdate = ({ matchId, isLiveStreaming }) => {
+      if (String(matchId) === String(id)) {
+        setIsStreaming(Boolean(isLiveStreaming));
+        setMatch((prev) => (prev ? { ...prev, isLiveStreaming } : prev));
+      }
+    };
+    socket.on('matchStreamUpdate', handleStreamUpdate);
+
+    const handleScoreUpdate = ({ matchId, match: updatedMatch, innings: updatedInnings }) => {
+      if (String(matchId) === String(id) || String(updatedMatch?._id) === String(id)) {
+        setMatch(updatedMatch);
+        setInningsSummaries(updatedInnings || []);
+        if (updatedMatch?.isLiveStreaming !== undefined) {
+          setIsStreaming(Boolean(updatedMatch.isLiveStreaming));
+        }
+      }
+    };
+    socket.on('matchScoreUpdate', handleScoreUpdate);
 
     return () => {
       socket.emit('leaveMatchViewer');
       socket.off('viewerCountUpdate', handleViewerUpdate);
+      socket.off('matchStreamUpdate', handleStreamUpdate);
+      socket.off('matchScoreUpdate', handleScoreUpdate);
     };
   }, [id, getToken]);
 
@@ -521,44 +472,33 @@ function LiveScoringPage() {
         )}
       </div>
 
-      {/* 🎥 Simultaneous Creator Live Stream Camera Bar */}
-      <div className="ls-creator-stream-widget">
-        <div className="ls-stream-widget-header">
-          <div className="ls-stream-status-pill">
-            <span className={`ls-status-dot ${isStreaming ? 'is-live' : ''}`}></span>
-            <strong>{isStreaming ? '🔴 LIVE STREAMING' : '🎥 STREAM OFF'}</strong>
-          </div>
+      {/* 🎥 Simultaneous Creator Live Stream Camera Bar (Creator Only) */}
+      {isCreator ? (
+        <div className="ls-creator-stream-widget">
+          <div className="ls-stream-widget-header">
+            <div className="ls-stream-status-pill">
+              <span className={`ls-status-dot ${isStreaming ? 'is-live' : ''}`}></span>
+              <strong>{isStreaming ? '🔴 LIVE STREAMING' : '🎥 STREAM OFF'}</strong>
+            </div>
 
-          <div className="ls-stream-actions">
-            {isStreaming ? (
-              <>
-                <button className="ls-stream-btn ls-btn-flip" onClick={switchCameraMode}>
-                  🔄 Flip ({facingMode === 'environment' ? 'Back 📷' : 'Front 👤'})
-                </button>
-                <button className="ls-stream-btn ls-btn-stop" onClick={() => toggleStream(false)}>
-                  ⏹️ Stop Stream
-                </button>
-              </>
-            ) : (
-              <button className="ls-stream-btn ls-btn-start" onClick={() => startCamera(facingMode)}>
-                🎥 Start Live Stream & Score
-              </button>
-            )}
-            <Link to={`/gully-cricket/match/${id}/stream`} className="ls-stream-btn ls-btn-hub" target="_blank">
-              👁️ Viewer Hub ↗
-            </Link>
-          </div>
-        </div>
-
-        {cameraActive && (
-          <div className="ls-camera-preview-container">
-            <video ref={videoRef} autoPlay playsInline muted className="ls-camera-preview-video" />
-            <div className="ls-camera-preview-overlay">
-              <span>🔴 LIVE TO SPECTATORS ({viewerCount || 1} watching)</span>
+            <div className="ls-stream-actions">
+              <Link to={`/gully-cricket/match/${id}/stream`} className="ls-stream-btn ls-btn-hub">
+                🎥 Open Live Stream & Chat ↗
+              </Link>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      ) : (
+        <div className="gc-spectator-mode-banner">
+          <div className="gc-spectator-banner-content">
+            <span className="gc-spectator-badge">👀 SPECTATOR MODE</span>
+            <p>Scores update in real time. Only the match creator can update scores.</p>
+          </div>
+          <Link to={`/gully-cricket/match/${id}/stream`} className="ls-stream-btn ls-btn-start">
+            🎥 Watch Live Stream & Chat ↗
+          </Link>
+        </div>
+      )}
 
       {match.status === 'completed' && (
         <>
@@ -570,12 +510,18 @@ function LiveScoringPage() {
       )}
 
       {needsInningsStart ? (
-        <StartInningsForm
-          match={match}
-          previousInnings={match.innings.length === 1 ? inningsSummaries[0] : null}
-          onStarted={applyResponse}
-          getToken={getToken}
-        />
+        isCreator ? (
+          <StartInningsForm
+            match={match}
+            previousInnings={match.innings.length === 1 ? inningsSummaries[0] : null}
+            onStarted={applyResponse}
+            getToken={getToken}
+          />
+        ) : (
+          <div className="gc-placeholder">
+            ⏳ Waiting for the match creator to start the {match.innings.length === 0 ? '1st' : '2nd'} innings...
+          </div>
+        )
       ) : (
         lastInnings && (
           <>
@@ -643,23 +589,29 @@ function LiveScoringPage() {
                   </div>
                 </div>
 
-                <div className="ls-scoring-pad">
-                  {[0, 1, 2, 3, 4, 6].map((r) => (
-                    <button
-                      key={r}
-                      className={`ls-run-btn ${r === 4 || r === 6 ? 'ls-run-btn-boundary' : ''}`}
-                      disabled={scoring}
-                      onClick={() => handleScoreTap(r)}
-                    >
-                      {r}
-                    </button>
-                  ))}
-                  <button className="ls-extra-btn" disabled={scoring} onClick={() => setPendingExtraType('wide')}>Wide</button>
-                  <button className="ls-extra-btn" disabled={scoring} onClick={() => setPendingExtraType('noball')}>No Ball</button>
-                  <button className="ls-extra-btn" disabled={scoring} onClick={() => setPendingExtraType('bye')}>Bye</button>
-                  <button className="ls-extra-btn" disabled={scoring} onClick={() => setPendingExtraType('legbye')}>Leg Bye</button>
-                  <button className="ls-wicket-btn" disabled={scoring} onClick={() => setShowWicketModal(true)}>🏏 WICKET</button>
-                </div>
+                {isCreator ? (
+                  <div className="ls-scoring-pad">
+                    {[0, 1, 2, 3, 4, 6].map((r) => (
+                      <button
+                        key={r}
+                        className={`ls-run-btn ${r === 4 || r === 6 ? 'ls-run-btn-boundary' : ''}`}
+                        disabled={scoring}
+                        onClick={() => handleScoreTap(r)}
+                      >
+                        {r}
+                      </button>
+                    ))}
+                    <button className="ls-extra-btn" disabled={scoring} onClick={() => setPendingExtraType('wide')}>Wide</button>
+                    <button className="ls-extra-btn" disabled={scoring} onClick={() => setPendingExtraType('noball')}>No Ball</button>
+                    <button className="ls-extra-btn" disabled={scoring} onClick={() => setPendingExtraType('bye')}>Bye</button>
+                    <button className="ls-extra-btn" disabled={scoring} onClick={() => setPendingExtraType('legbye')}>Leg Bye</button>
+                    <button className="ls-wicket-btn" disabled={scoring} onClick={() => setShowWicketModal(true)}>🏏 WICKET</button>
+                  </div>
+                ) : (
+                  <div className="gc-spectator-scoring-banner">
+                    ⚡ Match in progress — Score updates instantly on every ball
+                  </div>
+                )}
               </>
             )}
 

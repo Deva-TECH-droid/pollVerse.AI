@@ -649,6 +649,9 @@ router.post('/matches/:id/start-innings', requireAuth, async (req, res) => {
 
     const match = await Match.findById(req.params.id);
     if (!match) return res.status(404).json({ message: 'Match not found' });
+    if (match.createdBy?.userId && String(match.createdBy.userId) !== String(req.user._id)) {
+      return res.status(403).json({ message: 'Only the match creator can start the innings.' });
+    }
     if (match.status === 'completed') return res.status(400).json({ message: 'This match has already finished.' });
 
     const inningsCount = match.innings.length;
@@ -682,7 +685,22 @@ router.post('/matches/:id/start-innings', requireAuth, async (req, res) => {
     match.markModified('innings');
     await match.save();
 
-    res.status(201).json({ match, innings: match.innings.map((inn) => buildInningsSummary(match, inn)) });
+    const inningsSummaries = match.innings.map((inn) => buildInningsSummary(match, inn));
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`viewers:${match._id}`).emit('matchScoreUpdate', {
+        matchId: match._id,
+        match,
+        innings: inningsSummaries,
+      });
+      io.emit('globalMatchScoreUpdate', {
+        matchId: match._id,
+        match,
+        innings: inningsSummaries,
+      });
+    }
+
+    res.status(201).json({ match, innings: inningsSummaries });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
@@ -705,6 +723,9 @@ router.post('/matches/:id/ball', requireAuth, async (req, res) => {
 
     const match = await Match.findById(req.params.id);
     if (!match) return res.status(404).json({ message: 'Match not found' });
+    if (match.createdBy?.userId && String(match.createdBy.userId) !== String(req.user._id)) {
+      return res.status(403).json({ message: 'Only the match creator can update the score.' });
+    }
 
     const innings = match.innings[match.innings.length - 1];
     if (!innings || innings.isComplete) {
@@ -814,6 +835,24 @@ router.post('/matches/:id/ball', requireAuth, async (req, res) => {
     match.markModified('innings');
     await match.save();
 
+    const inningsSummaries = match.innings.map((inn) => buildInningsSummary(match, inn));
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`viewers:${match._id}`).emit('matchScoreUpdate', {
+        matchId: match._id,
+        match,
+        innings: inningsSummaries,
+        latestBall: ball,
+        inningsJustEnded,
+        matchComplete: match.status === 'completed',
+      });
+      io.emit('globalMatchScoreUpdate', {
+        matchId: match._id,
+        match,
+        innings: inningsSummaries,
+      });
+    }
+
     if (match.status === 'completed') {
       if (!match.tournamentId) {
         // Standalone matches only — tournament fixtures don't get this
@@ -832,7 +871,7 @@ router.post('/matches/:id/ball', requireAuth, async (req, res) => {
 
     res.json({
       match,
-      innings: match.innings.map((inn) => buildInningsSummary(match, inn)),
+      innings: inningsSummaries,
       inningsJustEnded,
       matchComplete: match.status === 'completed',
     });

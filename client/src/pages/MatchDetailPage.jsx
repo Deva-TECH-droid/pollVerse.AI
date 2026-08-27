@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { useUser } from '@clerk/clerk-react';
 import { io } from 'socket.io-client';
 import '../styles/GullyCricket.css';
 
@@ -8,6 +9,7 @@ const SOCKET_URL = process.env.REACT_APP_SOCKET_URL || 'http://localhost:5000';
 
 function MatchDetailPage() {
   const { id } = useParams();
+  const { user } = useUser();
   const [match, setMatch] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -43,6 +45,12 @@ function MatchDetailPage() {
       }
     });
 
+    socket.on('matchScoreUpdate', ({ matchId, match: updatedMatch }) => {
+      if (String(matchId) === String(id) || String(updatedMatch?._id) === String(id)) {
+        setMatch(updatedMatch);
+      }
+    });
+
     return () => {
       socket.emit('leaveMatchViewer');
       socket.disconnect();
@@ -75,11 +83,18 @@ function MatchDetailPage() {
     ? `${latestInnings.battingTeamName || 'Team'}: ${latestInnings.totalRuns}/${latestInnings.wickets} (${latestInnings.overs} ov)`
     : 'Yet to start';
 
+  const isCreator = Boolean(
+    user && match?.createdBy?.userId && (
+      String(user.id) === String(match.createdBy.userId) ||
+      user.primaryEmailAddress?.emailAddress?.toLowerCase() === match.createdBy.email?.toLowerCase()
+    )
+  );
+
   return (
     <div className="gc-container">
       <Link to="/gully-cricket" className="gc-back-link">← Back to Matches</Link>
 
-      {/* Creator Match Dashboard Card */}
+      {/* Creator / Match Dashboard Card */}
       <div className="gc-creator-dashboard">
         <div className="gc-dash-header">
           <h2 className="gc-dash-title">{match.teamA.name} <span className="gc-vs">🆚</span> {match.teamB.name}</h2>
@@ -119,13 +134,17 @@ function MatchDetailPage() {
             to={match.status === 'completed' ? `/gully-cricket/match/${match._id}/summary` : `/gully-cricket/match/${match._id}/score`}
             className="gc-btn-action gc-btn-score"
           >
-            📊 [Start Scoring]
+            {match.status === 'completed'
+              ? '📊 View Full Summary'
+              : isCreator
+              ? '📊 Start / Resume Scoring'
+              : '📊 View Live Scorecard'}
           </Link>
           <Link
             to={`/gully-cricket/match/${match._id}/stream`}
             className="gc-btn-action gc-btn-stream"
           >
-            🎥 [Start / Watch Live Stream]
+            {isCreator ? '🎥 Broadcast / Manage Stream' : '🎥 Watch Live Stream & Chat'}
           </Link>
         </div>
       </div>

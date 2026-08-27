@@ -59,6 +59,8 @@ function CreateMatchPage() {
   const [tossDecision, setTossDecision] = useState('bat');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const [createdMatch, setCreatedMatch] = useState(null);
+  const [showStreamPrompt, setShowStreamPrompt] = useState(false);
 
   const effectiveOvers = customOvers ? Number(customOvers) : overs;
 
@@ -100,7 +102,8 @@ function CreateMatchPage() {
         throw new Error(err.message || 'Failed to create match');
       }
       const match = await res.json();
-      navigate(`/gully-cricket/match/${match._id}`);
+      setCreatedMatch(match);
+      setShowStreamPrompt(true);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -208,6 +211,45 @@ function CreateMatchPage() {
           {submitting ? 'Creating match...' : '🏏 Create Match'}
         </button>
       </form>
+
+      {/* Post Match Creation Live Stream Option Prompt Modal */}
+      {showStreamPrompt && createdMatch && (
+        <div className="gc-modal-overlay">
+          <div className="gc-modal-box gc-stream-choice-modal">
+            <div className="gc-stream-choice-badge">MATCH READY 🏏</div>
+            <h2 className="gc-stream-choice-title">Do you want to live stream this match?</h2>
+            <p className="gc-stream-choice-desc">
+              Broadcast live video feed to spectators with an interactive broadcast scorecard, live chat, and instant micro-poll predictions.
+            </p>
+
+            <div className="gc-stream-choice-actions">
+              <button
+                type="button"
+                className="gc-choice-btn gc-choice-yes"
+                onClick={() => navigate(`/gully-cricket/match/${createdMatch._id}/stream`)}
+              >
+                <span className="gc-choice-icon">🎥</span>
+                <div>
+                  <strong>Yes, Live Stream</strong>
+                  <small>Open broadcast setup & camera</small>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                className="gc-choice-btn gc-choice-no"
+                onClick={() => navigate(`/gully-cricket/match/${createdMatch._id}/score`)}
+              >
+                <span className="gc-choice-icon">📊</span>
+                <div>
+                  <strong>No, Skip to Scoring</strong>
+                  <small>Directly open scoring console</small>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

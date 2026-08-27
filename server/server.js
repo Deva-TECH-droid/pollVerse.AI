@@ -94,6 +94,8 @@ app.get('/', (req, res) => {
 const matchViewers = new Map();
 // socket.id -> { matchId, viewerId } so disconnect can find what to clean up.
 const socketViewerInfo = new Map();
+// matchId -> broadcasterSocketId for real-time WebRTC stream routing
+const matchBroadcasters = new Map();
 
 function getMatchViewerCount(matchId) {
   const viewers = matchViewers.get(matchId);
@@ -214,9 +216,82 @@ io.on('connection', (socket) => {
     removeViewerBySocket(socket.id);
   });
 
+  // --- WebRTC Live Streaming Signaling ---
+  // Active broadcaster socket for each match: matchId -> broadcasterSocketId
+  socket.on('streamBroadcasterJoin', ({ matchId }) => {
+    if (!matchId) return;
+    matchBroadcasters.set(String(matchId), socket.id);
+    socket.join(`stream-broadcaster:${matchId}`);
+    socket.to(`viewers:${matchId}`).emit('streamBroadcasterReady', { matchId, broadcasterSocketId: socket.id });
+    console.log(`🎥 Broadcaster ${socket.id} started stream for match ${matchId}`);
+  });
+
+  // Viewer requests stream from broadcaster
+  socket.on('streamViewerJoin', ({ matchId }) => {
+    if (!matchId) return;
+    const broadcasterSocketId = matchBroadcasters.get(String(matchId));
+    if (broadcasterSocketId) {
+      io.to(broadcasterSocketId).emit('streamViewerJoined', {
+        matchId,
+        viewerSocketId: socket.id,
+      });
+    } else {
+      socket.to(`stream-broadcaster:${matchId}`).emit('streamViewerJoined', {
+        matchId,
+        viewerSocketId: socket.id,
+      });
+    }
+  });
+
+  // Relay WebRTC Offer from Broadcaster to Viewer
+  socket.on('streamOffer', ({ matchId, targetSocketId, offer }) => {
+    if (targetSocketId) {
+      io.to(targetSocketId).emit('streamOffer', {
+        matchId,
+        broadcasterSocketId: socket.id,
+        offer,
+      });
+    }
+  });
+
+  // Relay WebRTC Answer from Viewer back to Broadcaster
+  socket.on('streamAnswer', ({ matchId, targetSocketId, answer }) => {
+    if (targetSocketId) {
+      io.to(targetSocketId).emit('streamAnswer', {
+        matchId,
+        viewerSocketId: socket.id,
+        answer,
+      });
+    }
+  });
+
+  // Relay ICE Candidates between peers
+  socket.on('streamIceCandidate', ({ targetSocketId, candidate }) => {
+    if (targetSocketId && candidate) {
+      io.to(targetSocketId).emit('streamIceCandidate', {
+        fromSocketId: socket.id,
+        candidate,
+      });
+    }
+  });
+
+  // Broadcaster stops streaming
+  socket.on('streamStopped', ({ matchId }) => {
+    if (!matchId) return;
+    matchBroadcasters.delete(String(matchId));
+    socket.leave(`stream-broadcaster:${matchId}`);
+    io.to(`viewers:${matchId}`).emit('streamEnded', { matchId });
+  });
+
   socket.on('disconnect', () => {
     console.log(`Client disconnected: ${socket.id}`);
     removeViewerBySocket(socket.id);
+    for (const [mId, bId] of matchBroadcasters.entries()) {
+      if (bId === socket.id) {
+        matchBroadcasters.delete(mId);
+        io.to(`viewers:${mId}`).emit('streamEnded', { matchId: mId });
+      }
+    }
   });
 });
 

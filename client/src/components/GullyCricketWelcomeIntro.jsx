@@ -4,13 +4,14 @@ import { sounds } from '../utils/soundEffects';
 import '../styles/GullyCricketWelcomeIntro.css';
 
 const TEXT_LINE1 = 'GULLY CRICKET'.split('');
-const TEXT_LINE2 = 'SCORING'.split('');
-const FLOATING_EMOJIS = ['🏏', '🏆', '⚡', '🔥', '🎯', '🏟️', '🎉', '⭐', '🥎', '💥'];
+const TEXT_LINE2 = 'ARENA'.split('');
+const FLOATING_EMOJIS = ['🏏', '🏆', '⚡', '🔥', '🎯', '🏟️', '🎉', '⭐', '🥎', '💥', '4️⃣', '6️⃣'];
 
 function GullyCricketWelcomeIntro({ onComplete, onCreateMatch }) {
   const containerRef = useRef(null);
   const fireworksCanvasRef = useRef(null);
   const [muted, setMuted] = useState(false);
+  const [bowledBannerActive, setBowledBannerActive] = useState(false);
   const [scoreCount, setScoreCount] = useState('000/0');
 
   const toggleSound = () => {
@@ -42,11 +43,11 @@ function GullyCricketWelcomeIntro({ onComplete, onCreateMatch }) {
         this.x = x;
         this.y = canvas.height;
         this.targetY = targetY;
-        this.speed = Math.random() * 3 + 7;
-        this.angle = -Math.PI / 2 + (Math.random() - 0.5) * 0.2;
+        this.speed = Math.random() * 3 + 8;
+        this.angle = -Math.PI / 2 + (Math.random() - 0.5) * 0.25;
         this.vx = Math.cos(this.angle) * this.speed;
         this.vy = Math.sin(this.angle) * this.speed;
-        this.color = `hsl(${Math.random() * 60 + 35}, 100%, 65%)`; // Cricket gold/orange/yellow
+        this.color = `hsl(${Math.random() * 60 + 25}, 100%, 65%)`; // Gold/Orange/Crimson
         this.dead = false;
       }
 
@@ -61,19 +62,19 @@ function GullyCricketWelcomeIntro({ onComplete, onCreateMatch }) {
 
       draw() {
         ctx.beginPath();
-        ctx.arc(this.x, this.y, 3, 0, Math.PI * 2);
+        ctx.arc(this.x, this.y, 3.5, 0, Math.PI * 2);
         ctx.fillStyle = this.color;
-        ctx.shadowBlur = 10;
+        ctx.shadowBlur = 12;
         ctx.shadowColor = this.color;
         ctx.fill();
       }
 
       explode() {
         sounds.playFirework();
-        const pCount = Math.floor(Math.random() * 30 + 40);
+        const pCount = Math.floor(Math.random() * 35 + 45);
         for (let i = 0; i < pCount; i++) {
           const angle = Math.random() * Math.PI * 2;
-          const speed = Math.random() * 6 + 2;
+          const speed = Math.random() * 7 + 2;
           particles.push({
             x: this.x,
             y: this.y,
@@ -82,7 +83,7 @@ function GullyCricketWelcomeIntro({ onComplete, onCreateMatch }) {
             alpha: 1,
             decay: Math.random() * 0.02 + 0.015,
             color: this.color,
-            size: Math.random() * 3 + 1,
+            size: Math.random() * 3.5 + 1.2,
           });
         }
       }
@@ -113,7 +114,7 @@ function GullyCricketWelcomeIntro({ onComplete, onCreateMatch }) {
           ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
           ctx.fillStyle = p.color;
           ctx.globalAlpha = p.alpha;
-          ctx.shadowBlur = 8;
+          ctx.shadowBlur = 10;
           ctx.shadowColor = p.color;
           ctx.fill();
           ctx.globalAlpha = 1.0;
@@ -126,25 +127,25 @@ function GullyCricketWelcomeIntro({ onComplete, onCreateMatch }) {
     render();
 
     const triggerFireworksBurst = () => {
-      for (let i = 0; i < 5; i++) {
+      for (let i = 0; i < 6; i++) {
         setTimeout(() => {
           fireworks.push(
             new Firework(
               Math.random() * (canvas.width * 0.8) + canvas.width * 0.1,
-              Math.random() * (canvas.height * 0.4) + canvas.height * 0.15
+              Math.random() * (canvas.height * 0.35) + canvas.height * 0.12
             )
           );
-        }, i * 250);
+        }, i * 220);
       }
     };
 
     // -------------------------------------------------------------
-    // 2. GSAP Stadium Timeline Sequence
+    // 2. Cinematic Cricket Ground Action & Bowled Sequence
     // -------------------------------------------------------------
     const ctxGsap = gsap.context(() => {
       const tl = gsap.timeline();
 
-      // Step 1: Floodlights turning on 1 by 1
+      // Scene 1: Stadium Floodlights Powering On
       const towers = document.querySelectorAll('.gc-floodlight-tower');
       const beams = document.querySelectorAll('.gc-light-beam');
 
@@ -158,104 +159,158 @@ function GullyCricketWelcomeIntro({ onComplete, onCreateMatch }) {
             },
             duration: 0.15,
           },
-          idx * 0.3
-        ).to(beams[idx], { opacity: 0.7, duration: 0.4 }, `-=0.1`);
+          idx * 0.25
+        ).to(beams[idx], { opacity: 0.75, duration: 0.35 }, `-=0.1`);
       });
 
-      // Step 2: 3D Pitch Appearance & LED Stumps / Boundary Rope
-      tl.to('.gc-pitch-container', { opacity: 1, y: 0, duration: 0.8, ease: 'power3.out' }, '-=0.2')
-        .to('.gc-bail', { opacity: 1, duration: 0.3, ease: 'back.out(2)' }, '-=0.3')
-        .to('.gc-boundary-rope', { opacity: 1, duration: 0.5 }, '-=0.4')
+      // Scene 2: 3D Turf Pitch & Crease Markings Reveal
+      tl.to('.gc-pitch-container', { opacity: 1, y: 0, scale: 1, duration: 0.7, ease: 'power3.out' }, '-=0.2')
+        .to('.gc-batsman-figure', { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, '-=0.3')
+        .to('.gc-bowler-figure', { opacity: 1, x: 0, duration: 0.5, ease: 'power2.out' }, '-=0.4')
 
-        // Step 3: Bat Swing & Leather Ball Hit towards Viewer
-        .to('.gc-cricket-bat', {
-          opacity: 1,
-          rotate: -45,
-          duration: 0.4,
+        // Batsman tapping bat on crease
+        .to('.gc-bat-wood', { rotate: -18, duration: 0.15, yoyo: true, repeat: 3, ease: 'power1.inOut' })
+
+        // Scene 3: Bowler Run-Up & Delivery Stride
+        .to('.gc-bowler-figure', {
+          x: 60,
+          y: -10,
+          duration: 0.6,
+          ease: 'power2.in',
+          onStart: () => sounds.playBallWhoosh(),
+        })
+        .to('.gc-bowler-arm', { rotate: 360, duration: 0.35, ease: 'power3.in' }, '-=0.35')
+
+        // Ball zooming down the 22-yard pitch with blazing comet trail
+        .fromTo(
+          '.gc-delivery-ball',
+          { x: -140, y: -40, scale: 0.6, opacity: 1 },
+          {
+            x: 135,
+            y: 32,
+            scale: 1.5,
+            duration: 0.55,
+            ease: 'power3.in',
+          },
+          '-=0.2'
+        )
+
+        // Batsman swings & misses completely!
+        .to('.gc-bat-wood', { rotate: 65, duration: 0.2, ease: 'power4.in' }, '-=0.25')
+
+        // IMPACT: Ball Smashes Stumps!
+        .call(() => {
+          sounds.playStumpShatter();
+          sounds.playCrowdRoar();
+          setBowledBannerActive(true);
+        })
+        // Middle stump uprooted and cartwheeling backwards
+        .to('.gc-stump-middle', {
+          x: 90,
+          y: -80,
+          rotate: 320,
+          duration: 0.6,
           ease: 'power2.out',
         })
-        .to('.gc-cricket-bat', {
-          rotate: 60,
-          duration: 0.25,
-          ease: 'power4.in',
-          onStart: () => sounds.playBatHit(),
-        })
-        .fromTo(
-          '.gc-cricket-ball',
-          { scale: 0.2, x: 0, y: 100, opacity: 1 },
-          {
-            scale: 7,
-            y: -250,
-            opacity: 0,
-            duration: 0.5,
-            ease: 'power2.in',
-          },
-          '-=0.25'
-        )
-        // Screen Shake effect on impact!
-        .to(containerRef.current, { x: 12, y: -12, duration: 0.05, yoyo: true, repeat: 5 })
+        .to('.gc-stump-off', {
+          x: 40,
+          y: -40,
+          rotate: 90,
+          duration: 0.5,
+          ease: 'power2.out',
+        }, '-=0.55')
+        // Bails flying with intense red LED flash!
+        .to('.gc-bail-left', {
+          x: -60,
+          y: -120,
+          rotate: -480,
+          duration: 0.65,
+          ease: 'power2.out',
+        }, '-=0.55')
+        .to('.gc-bail-right', {
+          x: 110,
+          y: -130,
+          rotate: 520,
+          duration: 0.65,
+          ease: 'power2.out',
+        }, '-=0.6')
+        .to('.gc-stump-light-fx', { opacity: 1, scale: 2.2, duration: 0.2, yoyo: true, repeat: 1 }, '-=0.65')
 
-        // Step 4: Text Animation ("PollLive presents Gully Cricket Scoring")
-        .to('.gc-present-tag', { opacity: 1, y: 0, duration: 0.5, ease: 'back.out(1.5)' });
+        // Massive Screen Shake
+        .to(containerRef.current, { x: 16, y: -16, duration: 0.04, yoyo: true, repeat: 6 })
 
-      // Line 1 Letters fly in like cricket balls
+        // "BOWLED 'EM!" Broadcast Overlay flashes
+        .to('.gc-bowled-callout', { opacity: 1, scale: 1.15, duration: 0.35, ease: 'back.out(2)' })
+        .to('.gc-bowled-callout', { opacity: 0, scale: 0.85, duration: 0.4, delay: 0.8 })
+
+        // Scene 4: Cinematic Pitch Zoom & Transition into Live Scoring Platform
+        .to('.gc-pitch-container', { scale: 1.3, opacity: 0.2, filter: 'blur(8px)', duration: 0.8, ease: 'power2.inOut' })
+        .to('.gc-scoreboard-container', { opacity: 1, y: 0, duration: 0.8, ease: 'power3.out' }, '-=0.5')
+        .to('.gc-present-tag', { opacity: 1, y: 0, duration: 0.5, ease: 'back.out(1.5)' }, '-=0.4');
+
+      // Title Letters flying in
       const line1Letters = document.querySelectorAll('.gc-l1-letter');
       line1Letters.forEach((letEl, idx) => {
         tl.from(
           letEl,
           {
-            x: (idx - 6) * 120,
-            y: -300,
+            x: (idx - 6) * 90,
+            y: -250,
             rotate: 360,
             scale: 0,
             opacity: 0,
-            duration: 0.5,
+            duration: 0.45,
             ease: 'bounce.out',
             onStart: () => sounds.playLetterSnap(idx),
           },
-          `-=${idx === 0 ? 0.3 : 0.42}`
+          `-=${idx === 0 ? 0.3 : 0.38}`
         );
       });
 
-      // Line 2 Letters
       const line2Letters = document.querySelectorAll('.gc-l2-letter');
       line2Letters.forEach((letEl, idx) => {
         tl.from(
           letEl,
           {
-            x: (idx - 3) * 150,
-            y: 300,
+            x: (idx - 2) * 120,
+            y: 250,
             rotate: -360,
             scale: 2,
             opacity: 0,
             duration: 0.4,
             ease: 'back.out(2)',
-            onStart: () => sounds.playLetterSnap(idx + 7),
+            onStart: () => sounds.playLetterSnap(idx + 8),
           },
-          `-=${idx === 0 ? 0.2 : 0.35}`
+          `-=${idx === 0 ? 0.2 : 0.32}`
         );
       });
 
-      // Step 5: Digital Scoreboard Counter & Fireworks Climax
-      tl.to('.gc-matrix-frame', { opacity: 1, y: 0, duration: 0.6, ease: 'power3.out' }, '-=0.2')
+      // Feature Cards & Counter
+      tl.fromTo(
+        '.gc-platform-pill',
+        { y: 30, opacity: 0, scale: 0.9 },
+        { y: 0, opacity: 1, scale: 1, stagger: 0.1, duration: 0.5, ease: 'back.out(1.5)' },
+        '-=0.2'
+      )
+        .to('.gc-matrix-frame', { opacity: 1, y: 0, duration: 0.6, ease: 'power3.out' }, '-=0.2')
         .call(() => {
           let count = 0;
           const interval = setInterval(() => {
-            count += 42;
-            if (count >= 184) {
-              setScoreCount('184/6');
+            count += 48;
+            if (count >= 196) {
+              setScoreCount('196/4');
               clearInterval(interval);
               triggerFireworksBurst();
             } else {
               setScoreCount(`${count}/2`);
             }
-          }, 80);
+          }, 70);
         })
-        .to('.gc-actions', { opacity: 1, y: 0, duration: 0.6, ease: 'back.out(1.7)' }, '+=0.2');
+        .to('.gc-actions', { opacity: 1, y: 0, duration: 0.6, ease: 'back.out(1.7)' }, '+=0.1');
 
-      // Floating emoji particles continuous animation
+      // Floating particles
       const floaters = document.querySelectorAll('.gc-float-emoji');
-      floaters.forEach((el, idx) => {
+      floaters.forEach((el) => {
         gsap.set(el, {
           x: Math.random() * window.innerWidth,
           y: window.innerHeight + 50,
@@ -264,11 +319,11 @@ function GullyCricketWelcomeIntro({ onComplete, onCreateMatch }) {
         });
         gsap.to(el, {
           y: -100,
-          x: `+=${(Math.random() - 0.5) * 200}`,
+          x: `+=${(Math.random() - 0.5) * 180}`,
           rotation: Math.random() * 720 - 360,
-          opacity: 0.7,
+          opacity: 0.75,
           duration: Math.random() * 6 + 5,
-          delay: Math.random() * 8 + 2,
+          delay: Math.random() * 6 + 1,
           repeat: -1,
           ease: 'none',
         });
@@ -285,7 +340,7 @@ function GullyCricketWelcomeIntro({ onComplete, onCreateMatch }) {
   const handleEnter = () => {
     gsap.to(containerRef.current, {
       opacity: 0,
-      scale: 0.95,
+      scale: 0.96,
       duration: 0.5,
       ease: 'power2.inOut',
       onComplete: () => {
@@ -309,7 +364,7 @@ function GullyCricketWelcomeIntro({ onComplete, onCreateMatch }) {
       {/* Background Fireworks Canvas */}
       <canvas className="gc-fireworks-canvas" ref={fireworksCanvasRef} />
 
-      {/* Ground & Night Sky Backdrop */}
+      {/* Stadium Floodlit Ground Backdrop */}
       <div className="gc-stadium-bg" />
 
       {/* Top Bar Controls */}
@@ -336,37 +391,69 @@ function GullyCricketWelcomeIntro({ onComplete, onCreateMatch }) {
         ))}
       </div>
 
-      {/* 3D Pitch & Stumps */}
+      {/* 3D Match Play Scene: Bowler, 22-Yard Pitch, Batsman & Stumps */}
       <div className="gc-pitch-container">
-        <div className="gc-cricket-pitch">
-          <div className="gc-crease-line" />
-          <div className="gc-stumps">
-            <div className="gc-stump" />
-            <div className="gc-stump" />
-            <div className="gc-stump" />
-            <div className="gc-bail" />
-          </div>
-          <div className="gc-crease-line" />
+        {/* Animated Bowler Figure (Running in from bowling crease) */}
+        <div className="gc-bowler-figure">
+          <div className="gc-bowler-head" />
+          <div className="gc-bowler-body" />
+          <div className="gc-bowler-arm" />
+          <div className="gc-bowler-legs" />
+          <span className="gc-player-label-tag">BOWLER</span>
         </div>
-        <div className="gc-boundary-rope" />
+
+        {/* 22-Yard Turf Pitch */}
+        <div className="gc-cricket-pitch">
+          <div className="gc-bowling-crease" />
+          <div className="gc-pitch-stripes" />
+          
+          {/* Animated Cricket Leather Ball with Comet Trail */}
+          <div className="gc-delivery-ball">
+            <div className="gc-ball-seam" />
+            <div className="gc-ball-glow-trail" />
+          </div>
+
+          <div className="gc-batting-crease" />
+        </div>
+
+        {/* Batsman Figure (Poised on crease with pads & helmet) */}
+        <div className="gc-batsman-figure">
+          <div className="gc-batsman-helmet" />
+          <div className="gc-batsman-jersey" />
+          <div className="gc-bat-wood" />
+          <div className="gc-batsman-pads" />
+          <span className="gc-player-label-tag gc-tag-batsman">BATSMAN</span>
+        </div>
+
+        {/* 3D Stumps & LED Zing Bails */}
+        <div className="gc-stumps-set">
+          <div className="gc-stump-light-fx" />
+          <div className="gc-stump gc-stump-leg" />
+          <div className="gc-stump gc-stump-middle" />
+          <div className="gc-stump gc-stump-off" />
+          <div className="gc-bail gc-bail-left" />
+          <div className="gc-bail gc-bail-right" />
+        </div>
       </div>
 
-      {/* Bat & Ball Animation Stage */}
-      <div className="gc-animation-stage">
-        <div className="gc-cricket-bat" />
-        <div className="gc-cricket-ball" />
+      {/* Dramatic "BOWLED 'EM!" Broadcast Callout */}
+      <div className={`gc-bowled-callout ${bowledBannerActive ? 'active' : ''}`}>
+        <div className="gc-bowled-glow" />
+        <span className="gc-bowled-emoji">⚡🔴</span>
+        <h2>BOWLED HIM!</h2>
+        <p>MIDDLE STUMP UPROOTED · WHAT A DELIVERY!</p>
       </div>
 
-      {/* Floating Cricket Emoji Particles */}
+      {/* Floating Cricket Particles */}
       <div className="gc-float-particles">
         {FLOATING_EMOJIS.map((emoji, idx) => (
           <span key={`float-${idx}`} className="gc-float-emoji">{emoji}</span>
         ))}
       </div>
 
-      {/* Main Scoreboard Content */}
+      {/* Main Scoring Platform Dashboard Intro */}
       <div className="gc-scoreboard-container">
-        <div className="gc-present-tag">🏆 PollLive Presents 🏆</div>
+        <div className="gc-present-tag">🏏 PollVerse Gully Cricket 🏏</div>
 
         <div className="gc-main-title">
           <div className="gc-title-row">
@@ -386,24 +473,44 @@ function GullyCricketWelcomeIntro({ onComplete, onCreateMatch }) {
           </div>
         </div>
 
-        {/* LED Digital Matrix Frame */}
+        {/* Feature Pills */}
+        <div className="gc-platform-features">
+          <div className="gc-platform-pill">
+            <span className="gc-pill-icon">📊</span>
+            <span>Live Ball-by-Ball</span>
+          </div>
+          <div className="gc-platform-pill">
+            <span className="gc-pill-icon">🎥</span>
+            <span>Real-Time Streaming</span>
+          </div>
+          <div className="gc-platform-pill">
+            <span className="gc-pill-icon">🎯</span>
+            <span>Micro-Poll Predictions</span>
+          </div>
+          <div className="gc-platform-pill">
+            <span className="gc-pill-icon">🏆</span>
+            <span>Tournament Hub</span>
+          </div>
+        </div>
+
+        {/* LED Digital Score Matrix */}
         <div className="gc-matrix-frame">
-          <span className="gc-score-label">Gully Cricket</span>
+          <span className="gc-score-label">MATCH STATUS</span>
           <span className="gc-score-digit">{scoreCount}</span>
-          <span className="gc-score-label"> BALL-BY-BALL LIVE-SCORING</span>
+          <span className="gc-score-label">⚡ INSTANT REAL-TIME SCORING</span>
         </div>
 
         {/* Action Controls */}
         <div className="gc-actions">
           <button className="gc-btn-primary" onClick={handleEnter}>
-            <span>Enter Live Scoring</span>
+            <span>Enter Cricket Hub</span>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path d="M5 12h14M12 5l7 7-7 7" />
             </svg>
           </button>
 
           <button className="gc-btn-secondary" onClick={handleCreate}>
-            + Create New Match
+            + Create Live Match
           </button>
         </div>
       </div>
