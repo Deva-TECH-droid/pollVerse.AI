@@ -10,12 +10,17 @@ function Navbar() {
   const { user, logout } = useContext(AuthContext);
   const { user: clerkUser } = useUser();
   const [showDropdown, setShowDropdown] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const mobileMenuRef = useRef(null);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
         setShowDropdown(false);
+      }
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(e.target) && !e.target.closest('.navbar-mobile-toggle')) {
+        setMobileMenuOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -24,10 +29,12 @@ function Navbar() {
 
   useEffect(() => {
     setShowDropdown(false);
+    setMobileMenuOpen(false);
   }, [location.pathname]);
 
   const handleLogout = async () => {
     setShowDropdown(false);
+    setMobileMenuOpen(false);
     await logout();
     navigate('/');
   };
@@ -39,7 +46,9 @@ function Navbar() {
           <span className="logo-icon">⚡</span>
           LivePoll
         </Link>
-        <div className="navbar-links">
+
+        {/* Desktop Links */}
+        <div className="navbar-links desktop-only">
           {!user && (
             <Link
               to="/"
@@ -58,7 +67,13 @@ function Navbar() {
             to="/cricket"
             className={`nav-link ${location.pathname.startsWith('/cricket') ? 'active' : ''}`}
           >
-            🌍 Cricket
+            🌍 Cricket Scores
+          </Link>
+          <Link
+            to="/gully-cricket"
+            className={`nav-link ${location.pathname.startsWith('/gully-cricket') ? 'active' : ''}`}
+          >
+            🏏 Match Scoring & Stream
           </Link>
           <Link
             to="/ai-dashboard"
@@ -116,7 +131,7 @@ function Navbar() {
                       </Link>
                     )}
                     <Link to="/gully-cricket" className="nav-dropdown-item" onClick={() => setShowDropdown(false)}>
-                      🏏 Score
+                      🏏 Live Scoring
                     </Link>
                     <div className="nav-dropdown-divider" />
                     <button onClick={handleLogout} className="nav-dropdown-item nav-dropdown-item-danger">
@@ -132,7 +147,140 @@ function Navbar() {
             </Link>
           )}
         </div>
+
+        {/* Right side mobile controls */}
+        <div className="navbar-mobile-actions">
+          {user && (
+            <span className="mobile-credits-chip">🪙 {user.credits || 0}</span>
+          )}
+          {!user && (
+            <Link to="/login" className="nav-link-cta-mobile" state={{ from: location }}>
+              Login
+            </Link>
+          )}
+          <button
+            type="button"
+            className="navbar-mobile-toggle"
+            aria-label="Toggle navigation menu"
+            onClick={() => setMobileMenuOpen((o) => !o)}
+          >
+            {mobileMenuOpen ? '✕' : '☰'}
+          </button>
+        </div>
       </div>
+
+      {/* Mobile Drawer Menu */}
+      {mobileMenuOpen && (
+        <div className="navbar-mobile-drawer" ref={mobileMenuRef}>
+          <div className="mobile-drawer-inner">
+            <Link
+              to="/"
+              className={`mobile-nav-link ${location.pathname === '/' ? 'active' : ''}`}
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              🏠 Home
+            </Link>
+            <Link
+              to="/polls"
+              className={`mobile-nav-link ${location.pathname === '/polls' ? 'active' : ''}`}
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              🗳️ Polls
+            </Link>
+            <Link
+              to="/cricket"
+              className={`mobile-nav-link ${location.pathname.startsWith('/cricket') ? 'active' : ''}`}
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              🌍 Live Cricket Scores
+            </Link>
+            <Link
+              to="/gully-cricket"
+              className={`mobile-nav-link ${location.pathname.startsWith('/gully-cricket') ? 'active' : ''}`}
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              🏏 Match Scoring & Camera Stream
+            </Link>
+            <Link
+              to="/ai-dashboard"
+              className={`mobile-nav-link ${location.pathname === '/ai-dashboard' ? 'active' : ''}`}
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              🤖 AI Performance
+            </Link>
+            <Link
+              to="/leaderboard"
+              className={`mobile-nav-link ${location.pathname === '/leaderboard' ? 'active' : ''}`}
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              🏆 Leaderboard
+            </Link>
+
+            {user?.isAdmin && (
+              <Link
+                to="/create"
+                className="mobile-nav-link mobile-nav-cta"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                + Create Poll
+              </Link>
+            )}
+
+            {user && !user.isAdmin && (
+              <Link
+                to="/feedback"
+                className={`mobile-nav-link ${location.pathname === '/feedback' ? 'active' : ''}`}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                💬 Feedback
+              </Link>
+            )}
+
+            <div className="mobile-drawer-divider" />
+
+            {user ? (
+              <div className="mobile-user-section">
+                <div className="mobile-user-row">
+                  {clerkUser?.imageUrl && (
+                    <img src={clerkUser.imageUrl} alt="Avatar" className="mobile-avatar" />
+                  )}
+                  <div className="mobile-user-meta">
+                    <span className="mobile-user-name">{user.name || user.email}</span>
+                    <span className="mobile-user-sub">🪙 {user.credits || 0} Credits</span>
+                  </div>
+                </div>
+
+                {user.isAdmin && (
+                  <Link
+                    to="/admin/analytics"
+                    className="mobile-nav-link"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    📊 Admin Analytics
+                  </Link>
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="mobile-nav-link mobile-logout-btn"
+                >
+                  🚪 Logout
+                </button>
+              </div>
+            ) : (
+              <Link
+                to="/login"
+                className="mobile-nav-link mobile-nav-cta"
+                state={{ from: location }}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                🔐 Sign In / Register
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
     </nav>
   );
 }

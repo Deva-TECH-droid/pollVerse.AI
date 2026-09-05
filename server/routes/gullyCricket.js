@@ -5,6 +5,16 @@ const { requireAuth } = require('../middleware/auth');
 const { generateMotmCertificate } = require('../utils/certificate');
 const { sendMatchScorecardEmail } = require('../utils/email');
 
+// Per-match monotonic sequence counter for real-time score updates.
+// Clients use this to discard stale / out-of-order broadcasts.
+const matchSequence = new Map();
+function nextSeq(matchId) {
+  const id = String(matchId);
+  const seq = (matchSequence.get(id) || 0) + 1;
+  matchSequence.set(id, seq);
+  return seq;
+}
+
 router.post('/matches', requireAuth, async (req, res) => {
   try {
     const { teamAName, teamBName, teamAPlayers, teamBPlayers, overs, tossWonBy, tossDecision } = req.body;
@@ -688,15 +698,18 @@ router.post('/matches/:id/start-innings', requireAuth, async (req, res) => {
     const inningsSummaries = match.innings.map((inn) => buildInningsSummary(match, inn));
     const io = req.app.get('io');
     if (io) {
+      const seq = nextSeq(match._id);
       io.to(`viewers:${match._id}`).emit('matchScoreUpdate', {
         matchId: match._id,
         match,
         innings: inningsSummaries,
+        seq,
       });
       io.emit('globalMatchScoreUpdate', {
         matchId: match._id,
         match,
         innings: inningsSummaries,
+        seq,
       });
     }
 
@@ -838,6 +851,7 @@ router.post('/matches/:id/ball', requireAuth, async (req, res) => {
     const inningsSummaries = match.innings.map((inn) => buildInningsSummary(match, inn));
     const io = req.app.get('io');
     if (io) {
+      const seq = nextSeq(match._id);
       io.to(`viewers:${match._id}`).emit('matchScoreUpdate', {
         matchId: match._id,
         match,
@@ -845,11 +859,13 @@ router.post('/matches/:id/ball', requireAuth, async (req, res) => {
         latestBall: ball,
         inningsJustEnded,
         matchComplete: match.status === 'completed',
+        seq,
       });
       io.emit('globalMatchScoreUpdate', {
         matchId: match._id,
         match,
         innings: inningsSummaries,
+        seq,
       });
     }
 

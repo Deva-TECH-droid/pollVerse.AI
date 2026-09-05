@@ -1,0 +1,916 @@
+/* ==========================================================================
+   Big Screen Stadium Scoreboard Styles
+   PollVerse Cricket - Premium LED Stadium Arena Experience
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700;800&family=Outfit:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap');
+
+:root {
+  --bs-bg-dark: #070a14;
+  --bs-bg-card: rgba(15, 23, 42, 0.75);
+  --bs-bg-card-border: rgba(255, 255, 255, 0.08);
+  --bs-gold: #fbbf24;
+  --bs-gold-glow: rgba(251, 191, 36, 0.4);
+  --bs-neon-green: #10b981;
+  --bs-neon-green-glow: rgba(16, 185, 129, 0.35);
+  --bs-neon-red: #ef4444;
+  --bs-neon-red-glow: rgba(239, 68, 68, 0.45);
+  --bs-cyan: #38bdf8;
+  --bs-purple: #a855f7;
+}
+
+.bigscreen-wrapper {
+  min-height: 100vh;
+  width: 100%;
+  background: radial-gradient(ellipse at top, #0f1c3f 0%, #080d1e 40%, #03050c 100%);
+  color: #f8fafc;
+  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+  position: relative;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+/* Stadium ambient lights overlay */
+.bigscreen-wrapper::before {
+  content: '';
+  position: absolute;
+  top: -100px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90%;
+  height: 350px;
+  background: radial-gradient(ellipse, rgba(56, 189, 248, 0.12) 0%, rgba(251, 191, 36, 0.05) 50%, transparent 80%);
+  pointer-events: none;
+  filter: blur(50px);
+  z-index: 0;
+}
+
+.bigscreen-container {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 1.25rem 2rem 3rem;
+  width: 100%;
+  position: relative;
+  z-index: 1;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* ── Top Header Navigation Bar ────────────────────────────────────────── */
+.bs-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1.25rem;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--bs-bg-card-border);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.36);
+}
+
+.bs-match-identity {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.bs-logo-tag {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.2), rgba(245, 158, 11, 0.05));
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: 0.85rem;
+  color: #fef08a;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.bs-match-title {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin: 0;
+}
+
+.bs-match-title .bs-vs {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  text-transform: uppercase;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 0.15rem 0.5rem;
+  border-radius: 6px;
+}
+
+.bs-header-center {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.bs-badge-live {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  color: #fca5a5;
+  padding: 0.4rem 1rem;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+}
+
+.bs-pulse-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: #ef4444;
+  box-shadow: 0 0 12px #ef4444;
+  animation: bs-pulse 1.6s infinite;
+}
+
+@keyframes bs-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(1.3); }
+}
+
+.bs-badge-viewers {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: rgba(56, 189, 248, 0.15);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  color: #7dd3fc;
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.bs-header-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.bs-btn-icon {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #e2e8f0;
+  padding: 0.45rem 0.9rem;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.bs-btn-icon:hover {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+.bs-btn-video-toggle {
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.25), rgba(126, 34, 206, 0.15));
+  border-color: rgba(168, 85, 247, 0.4);
+  color: #d8b4fe;
+}
+
+.bs-btn-video-toggle:hover {
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.4), rgba(126, 34, 206, 0.25));
+  color: #ffffff;
+}
+
+/* ── Celebration Overlay / Banner ─────────────────────────────────────── */
+.bs-celebration-banner {
+  animation: bs-zoom-in 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  padding: 1.25rem 2rem;
+  border-radius: 20px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
+}
+
+.bs-celebration-six {
+  background: linear-gradient(135deg, #7c3aed, #ec4899);
+  border: 2px solid #f472b6;
+  box-shadow: 0 0 40px rgba(236, 72, 153, 0.5);
+}
+
+.bs-celebration-four {
+  background: linear-gradient(135deg, #d97706, #f59e0b);
+  border: 2px solid #fde047;
+  box-shadow: 0 0 40px rgba(245, 158, 11, 0.5);
+}
+
+.bs-celebration-wicket {
+  background: linear-gradient(135deg, #b91c1c, #dc2626);
+  border: 2px solid #f87171;
+  box-shadow: 0 0 40px rgba(220, 38, 38, 0.6);
+}
+
+.bs-celebration-title {
+  font-family: 'Chakra Petch', sans-serif;
+  font-size: 3rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  color: #ffffff;
+  text-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  margin: 0;
+  line-height: 1;
+}
+
+.bs-celebration-sub {
+  font-size: 1.2rem;
+  color: rgba(255, 255, 255, 0.9);
+  margin: 0.35rem 0 0;
+  font-weight: 600;
+}
+
+@keyframes bs-zoom-in {
+  0% { transform: scale(0.6); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* ── Main Scoreboard Arena ────────────────────────────────────────────── */
+.bs-arena-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+
+.bs-arena-with-video {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1.5rem;
+}
+
+@media (max-width: 1100px) {
+  .bs-arena-with-video {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Hero Stadium Scoreboard Card ─────────────────────────────────────── */
+.bs-scoreboard-card {
+  background: rgba(15, 23, 42, 0.82);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--bs-bg-card-border);
+  border-radius: 24px;
+  padding: 2.25rem 2.5rem;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+  position: relative;
+}
+
+/* Subtle top glow bar */
+.bs-scoreboard-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 20%;
+  right: 20%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #38bdf8, #fbbf24, transparent);
+}
+
+.bs-score-main-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+}
+
+.bs-batting-identity {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.bs-team-circle-badge {
+  width: 68px;
+  height: 68px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #1e293b, #334155);
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Chakra Petch', sans-serif;
+  font-size: 1.85rem;
+  font-weight: 800;
+  color: #fbbf24;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.bs-team-name-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.bs-team-current-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #94a3b8;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.bs-team-current-name {
+  font-size: 2.25rem;
+  font-weight: 900;
+  color: #ffffff;
+  margin: 0;
+  line-height: 1.15;
+}
+
+.bs-innings-indicator {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #38bdf8;
+  margin-top: 0.2rem;
+}
+
+/* Big LED digits */
+.bs-score-digits-box {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-family: 'Chakra Petch', monospace;
+}
+
+.bs-score-runs-wickets {
+  font-size: 5rem;
+  font-weight: 800;
+  color: #fbbf24;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  text-shadow: 0 0 35px rgba(251, 191, 36, 0.4);
+}
+
+.bs-score-divider {
+  font-size: 4rem;
+  color: #64748b;
+  margin: 0 0.15rem;
+}
+
+.bs-overs-box {
+  display: flex;
+  flex-direction: column;
+  margin-left: 1.25rem;
+}
+
+.bs-overs-label {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.bs-overs-value {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: #e2e8f0;
+  line-height: 1.1;
+  font-family: 'Chakra Petch', sans-serif;
+}
+
+.bs-overs-max {
+  font-size: 1.25rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+/* Target & Run-Rate Banner */
+.bs-equation-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 0.9rem 1.5rem;
+}
+
+.bs-equation-target {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #f1f5f9;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.bs-equation-target strong {
+  color: #fbbf24;
+}
+
+.bs-equation-rates {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.bs-rate-item {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  font-size: 0.95rem;
+  color: #94a3b8;
+}
+
+.bs-rate-item strong {
+  font-size: 1.3rem;
+  font-weight: 800;
+  font-family: 'Chakra Petch', monospace;
+  color: #38bdf8;
+}
+
+.bs-rate-item.bs-rate-rrr strong {
+  color: #f87171;
+}
+
+/* ── Recent Balls Over Ticker ─────────────────────────────────────────── */
+.bs-recent-balls-section {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.bs-balls-label {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  font-weight: 800;
+  color: #94a3b8;
+  letter-spacing: 0.08em;
+}
+
+.bs-balls-tape {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.bs-ball-pill {
+  min-width: 44px;
+  height: 44px;
+  padding: 0 0.5rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Chakra Petch', sans-serif;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  transition: transform 0.2s ease;
+}
+
+.bs-ball-pill:hover {
+  transform: scale(1.15);
+}
+
+.bs-ball-four {
+  background: linear-gradient(135deg, #d97706, #b45309);
+  border-color: #fde047;
+  color: #fffbeb;
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.6);
+}
+
+.bs-ball-six {
+  background: linear-gradient(135deg, #9333ea, #7c3aed);
+  border-color: #e9d5ff;
+  color: #ffffff;
+  box-shadow: 0 0 20px rgba(147, 51, 234, 0.8);
+}
+
+.bs-ball-wicket {
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  border-color: #fca5a5;
+  color: #ffffff;
+  box-shadow: 0 0 20px rgba(220, 38, 38, 0.8);
+}
+
+.bs-ball-extra {
+  background: rgba(249, 115, 22, 0.2);
+  border-color: rgba(249, 115, 22, 0.6);
+  color: #fdba74;
+}
+
+/* ── Active Batters & Bowlers Podium ──────────────────────────────────── */
+.bs-players-podium {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.25rem;
+}
+
+.bs-player-card {
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--bs-bg-card-border);
+  border-radius: 18px;
+  padding: 1.35rem 1.5rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.bs-player-card-striker {
+  border-color: rgba(251, 191, 36, 0.35);
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.08) 0%, rgba(15, 23, 42, 0.8) 100%);
+}
+
+.bs-player-card-striker::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: #fbbf24;
+}
+
+.bs-player-card-bowler {
+  border-color: rgba(56, 189, 248, 0.35);
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.08) 0%, rgba(15, 23, 42, 0.8) 100%);
+}
+
+.bs-player-card-bowler::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: #38bdf8;
+}
+
+.bs-player-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.bs-player-role-badge {
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+}
+
+.bs-player-role-striker {
+  background: rgba(251, 191, 36, 0.2);
+  color: #fbbf24;
+}
+
+.bs-player-role-bowler {
+  background: rgba(56, 189, 248, 0.2);
+  color: #38bdf8;
+}
+
+.bs-player-name {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.bs-strike-star {
+  color: #fbbf24;
+  font-size: 1.1rem;
+}
+
+.bs-player-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+  background: rgba(0, 0, 0, 0.25);
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+}
+
+.bs-metric-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.bs-metric-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  color: #94a3b8;
+  font-weight: 700;
+}
+
+.bs-metric-number {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #f8fafc;
+  font-family: 'Chakra Petch', monospace;
+}
+
+.bs-metric-highlight {
+  color: #fbbf24;
+}
+
+.bs-metric-cyan {
+  color: #38bdf8;
+}
+
+/* ── Match Partnership & Live Commentary Bar ──────────────────────────── */
+.bs-match-footer-bar {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+}
+
+@media (max-width: 900px) {
+  .bs-match-footer-bar {
+    grid-template-columns: 1fr;
+  }
+}
+
+.bs-info-box {
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--bs-bg-card-border);
+  border-radius: 16px;
+  padding: 1rem 1.35rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.bs-info-icon {
+  font-size: 1.8rem;
+  line-height: 1;
+}
+
+.bs-info-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.bs-info-title {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #94a3b8;
+  font-weight: 700;
+}
+
+.bs-info-text {
+  font-size: 1.1rem;
+  color: #e2e8f0;
+  font-weight: 600;
+  margin-top: 0.15rem;
+}
+
+.bs-info-text strong {
+  color: #fbbf24;
+}
+
+/* ── Split Live Video Player (Broadcaster WebRTC Stream) ──────────────── */
+.bs-video-panel {
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--bs-bg-card-border);
+  border-radius: 24px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+}
+
+.bs-video-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.bs-video-title {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.bs-video-viewport {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #000;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bs-video-element {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.bs-video-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  color: #64748b;
+  text-align: center;
+  padding: 1.5rem;
+}
+
+.bs-video-placeholder-icon {
+  font-size: 3rem;
+  opacity: 0.6;
+}
+
+/* ── Playing XI Squad Section ─────────────────────────────────────────── */
+.bs-squads-section {
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--bs-bg-card-border);
+  border-radius: 20px;
+  padding: 1.5rem 2rem;
+}
+
+.bs-squads-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
+
+.bs-squads-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.bs-squads-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+}
+
+@media (max-width: 800px) {
+  .bs-squads-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.bs-team-squad-column {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.bs-team-squad-name {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #38bdf8;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.bs-squad-chips-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.bs-player-squad-chip {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0.4rem 0.85rem;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #cbd5e1;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.bs-player-squad-chip.is-active-striker {
+  background: rgba(251, 191, 36, 0.18);
+  border-color: #fbbf24;
+  color: #fef08a;
+  font-weight: 800;
+}
+
+.bs-player-squad-chip.is-active-bowler {
+  background: rgba(56, 189, 248, 0.18);
+  border-color: #38bdf8;
+  color: #bae6fd;
+  font-weight: 800;
+}
+
+.bs-player-squad-chip.is-out {
+  opacity: 0.45;
+  text-decoration: line-through;
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.2);
+}
+
+/* Match Completed State */
+.bs-match-completed-box {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(5, 150, 105, 0.15));
+  border: 2px solid rgba(16, 185, 129, 0.5);
+  border-radius: 20px;
+  padding: 1.5rem 2rem;
+  text-align: center;
+  box-shadow: 0 0 30px rgba(16, 185, 129, 0.3);
+}
+
+.bs-completed-trophy {
+  font-size: 2.5rem;
+}
+
+.bs-completed-result {
+  font-size: 2rem;
+  font-weight: 900;
+  color: #6ee7b7;
+  margin: 0.25rem 0 0.5rem;
+}
+
+/* Fullscreen mode adjustments */
+:fullscreen .bigscreen-wrapper {
+  overflow-y: auto;
+}
+
+@media (max-width: 768px) {
+  .bigscreen-container {
+    padding: 0.75rem 1rem 2rem;
+  }
+  .bs-score-runs-wickets {
+    font-size: 3.5rem;
+  }
+  .bs-overs-value {
+    font-size: 1.8rem;
+  }
+  .bs-team-current-name {
+    font-size: 1.6rem;
+  }
+}

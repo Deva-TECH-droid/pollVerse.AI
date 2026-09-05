@@ -6,18 +6,17 @@ const API_URL = process.env.REACT_APP_API_URL || '';
 
 const TABS = [
   { key: 'all', label: '🌐 All Matches', endpoint: 'all' },
-  { key: 'live', label: '🔴 Live', endpoint: 'live' },
+  { key: 'live', label: '🔴 Live Matches', endpoint: 'live' },
   { key: 'upcoming', label: '📅 Upcoming', endpoint: 'upcoming' },
-  { key: 'recent', label: '✅ Recent', endpoint: 'recent' },
+  { key: 'recent', label: '✅ Results / Completed', endpoint: 'recent' },
 ];
 
 const FORMAT_FILTERS = [
   { key: 'all', label: 'All Formats' },
-  { key: 'test', label: 'Test Matches' },
-  { key: 'odi', label: 'ODI' },
-  { key: 't20', label: 'T20 International' },
-  { key: 'league', label: 'IPL / Leagues' },
-  { key: 'women', label: 'Women\'s Cricket' },
+  { key: 'test', label: '🏏 Test' },
+  { key: 'odi', label: '🏆 ODI' },
+  { key: 't20', label: '⚡ T20I' },
+  { key: 'league', label: '🌟 Global Leagues' },
 ];
 
 function TickerMatchCard({ match }) {
@@ -42,13 +41,23 @@ function TickerMatchCard({ match }) {
   );
 }
 
+function BallChip({ outcome }) {
+  let extraClass = '';
+  if (outcome === 'W') extraClass = 'ball-wicket';
+  else if (outcome === '4' || outcome === 4) extraClass = 'ball-four';
+  else if (outcome === '6' || outcome === 6) extraClass = 'ball-six';
+  else if (outcome === '0' || outcome === 0) extraClass = 'ball-dot';
+
+  return <span className={`ck-delivery-chip ${extraClass}`}>{outcome}</span>;
+}
+
 function MatchCard({ match }) {
   return (
     <div className={`ck-match-card ${match.isLive ? 'is-live-card' : ''}`}>
       <div className="ck-card-header">
         <div className="ck-card-meta">
           <span className="ck-card-series">{match.series}</span>
-          {match.matchType && <span className="ck-card-type-badge">{match.matchType.toUpperCase()}</span>}
+          {match.format && <span className="ck-card-type-badge">{match.format}</span>}
         </div>
         {match.isLive ? (
           <span className="ck-live-badge"><span className="ck-pulse-dot"></span> 🔴 LIVE</span>
@@ -61,6 +70,7 @@ function MatchCard({ match }) {
 
       <h3 className="ck-match-title">{match.name}</h3>
 
+      {/* Teams and Scores */}
       <div className="ck-teams-section">
         <div className="ck-team-block">
           <div className="ck-team-info">
@@ -87,6 +97,55 @@ function MatchCard({ match }) {
         </div>
       </div>
 
+      {/* Cricbuzz Live Micro-Hub Section for Live Matches */}
+      {match.isLive && (
+        <div className="ck-live-micro-box">
+          {/* CRR & Target Bar */}
+          <div className="ck-live-rates-bar">
+            {match.crr && <span className="ck-rate-item">CRR: <strong>{match.crr}</strong></span>}
+            {match.rrr && <span className="ck-rate-item">RRR: <strong>{match.rrr}</strong></span>}
+            {match.target && <span className="ck-rate-item target">Target: <strong>{match.target}</strong></span>}
+          </div>
+
+          {/* Current Batters */}
+          {match.currentBatters && match.currentBatters.length > 0 && (
+            <div className="ck-onpitch-batters">
+              {match.currentBatters.map((b, i) => (
+                <div key={i} className={`ck-onpitch-player ${b.onStrike ? 'on-strike' : ''}`}>
+                  <span className="ck-player-title">
+                    {b.name} {b.onStrike ? '★' : ''}
+                  </span>
+                  <span className="ck-player-digits">{b.runs} ({b.balls})</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Current Bowler */}
+          {match.currentBowler && (
+            <div className="ck-onpitch-bowler">
+              <span className="ck-bowler-label">Bowler:</span>
+              <span className="ck-bowler-name">{match.currentBowler.name}</span>
+              <span className="ck-bowler-figures">
+                {match.currentBowler.overs} - {match.currentBowler.maidens} - {match.currentBowler.runs} - {match.currentBowler.wickets}
+              </span>
+            </div>
+          )}
+
+          {/* Ball by Ball Delivery Strip */}
+          {match.currentOver?.balls?.length > 0 && (
+            <div className="ck-ballbyball-strip">
+              <span className="ck-bbb-over-label">Over {match.currentOver.overNumber}:</span>
+              <div className="ck-bbb-balls">
+                {match.currentOver.balls.map((ball, idx) => (
+                  <BallChip key={idx} outcome={ball} />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="ck-card-status-bar">
         <p className="ck-match-status">📣 {match.status}</p>
         {match.venue && <p className="ck-match-venue">📍 {match.venue}</p>}
@@ -94,7 +153,7 @@ function MatchCard({ match }) {
 
       <div className="ck-card-actions">
         <Link to={`/cricket/match/${match.id}`} className="ck-btn-primary">
-          📋 Full Scorecard & Match Info
+          📋 Full Cricbuzz Scorecard & Commentary ➔
         </Link>
       </div>
     </div>
@@ -104,6 +163,8 @@ function MatchCard({ match }) {
 function CricketHomePage() {
   const [activeTab, setActiveTab] = useState('all');
   const [activeFormat, setActiveFormat] = useState('all');
+  const [activeLeague, setActiveLeague] = useState('all');
+  const [leagues, setLeagues] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [matches, setMatches] = useState([]);
   const [tickerMatches, setTickerMatches] = useState([]);
@@ -113,6 +174,14 @@ function CricketHomePage() {
   const [lastRefreshed, setLastRefreshed] = useState(new Date());
   const timerRef = useRef(null);
 
+  // Fetch leagues registry
+  useEffect(() => {
+    fetch(`${API_URL}/api/cricket/leagues`)
+      .then((r) => r.json())
+      .then((data) => setLeagues(data))
+      .catch((e) => console.warn('Leagues fetch error:', e));
+  }, []);
+
   const fetchMatches = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -121,6 +190,7 @@ function CricketHomePage() {
       const params = new URLSearchParams({
         tab: tabObj.key,
         type: activeFormat,
+        league: activeLeague,
         search: searchQuery,
       });
 
@@ -144,18 +214,18 @@ function CricketHomePage() {
     } finally {
       setLoading(false);
     }
-  }, [activeTab, activeFormat, searchQuery]);
+  }, [activeTab, activeFormat, activeLeague, searchQuery]);
 
   useEffect(() => {
     fetchMatches();
   }, [fetchMatches]);
 
-  // Auto-refresh interval (every 20s if enabled)
+  // Auto-refresh interval (every 15s)
   useEffect(() => {
     if (autoRefresh) {
       timerRef.current = setInterval(() => {
         fetchMatches();
-      }, 20000);
+      }, 15000);
     } else if (timerRef.current) {
       clearInterval(timerRef.current);
     }
@@ -168,7 +238,7 @@ function CricketHomePage() {
     <div className="ck-container">
       {/* Cricbuzz Top Live Match Ticker (Ongoing Live Matches Only) */}
       <div className="ck-ticker-wrapper">
-        <div className="ck-ticker-title">🔴 LIVE MATCH TICKER (ONGOING MATCHES)</div>
+        <div className="ck-ticker-title">🔴 LIVE SCORES TICKER</div>
         {tickerMatches.length > 0 ? (
           <div className="ck-ticker-scroll">
             {tickerMatches.map((m) => (
@@ -176,16 +246,18 @@ function CricketHomePage() {
             ))}
           </div>
         ) : (
-          <p className="ck-ticker-empty">No live international matches ongoing right now.</p>
+          <p className="ck-ticker-empty">Live matches automatically appear here with real-time updates.</p>
         )}
       </div>
 
       {/* Hero Header */}
       <div className="ck-hero">
-        <div className="ck-hero-badge">🏏 LIVE CRICKET HUB</div>
-        <h1 className="ck-title">Cricbuzz <span className="ck-accent">World Scores</span></h1>
-        <p className="ck-subtitle">Live ball-by-ball updates, Test scorecards, ODI & T20 international fixtures from around the world.</p>
-        
+        <div className="ck-hero-badge">🏏 GLOBAL CRICKET LIVE SCORES</div>
+        <h1 className="ck-title">Cricbuzz <span className="ck-accent">Cricket Universe</span></h1>
+        <p className="ck-subtitle">
+          Real-time international cricket (IND, AUS, ENG, SA, NZ, PAK, SL, BAN, AFG, WI, IRE, ZIM) & premier franchise leagues worldwide (IPL, CPL, MLC, BBL, PSL, SA20, The Hundred).
+        </p>
+
         <div className="ck-live-controls">
           <button className="ck-refresh-btn" onClick={fetchMatches}>
             🔄 Refresh Scores
@@ -196,19 +268,19 @@ function CricketHomePage() {
               checked={autoRefresh}
               onChange={(e) => setAutoRefresh(e.target.checked)}
             />
-            <span>Auto-Refresh (20s) {autoRefresh && <span className="ck-pulse-dot"></span>}</span>
+            <span>Auto-Sync Live {autoRefresh && <span className="ck-pulse-dot"></span>}</span>
           </label>
           <span className="ck-time-tag">Updated: {lastRefreshed.toLocaleTimeString()}</span>
         </div>
       </div>
 
-      {/* Search & Filter Bar */}
+      {/* Search Bar */}
       <div className="ck-search-filter-wrap">
         <div className="ck-search-box">
           <span className="ck-search-icon">🔍</span>
           <input
             type="text"
-            placeholder="Search teams (e.g. India, Sri Lanka), series, or venue..."
+            placeholder="Search teams (e.g. India, Australia, CSK, MI), series, or venue..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -218,7 +290,7 @@ function CricketHomePage() {
         </div>
       </div>
 
-      {/* Status Tabs (All, Live, Upcoming, Recent) */}
+      {/* Categories / Status Tabs */}
       <div className="ck-tabs">
         {TABS.map((t) => (
           <button
@@ -231,7 +303,22 @@ function CricketHomePage() {
         ))}
       </div>
 
-      {/* Format Filter Bar */}
+      {/* Extensible Leagues Selector Row */}
+      {leagues.length > 0 && (
+        <div className="ck-leagues-carousel">
+          {leagues.map((lg) => (
+            <button
+              key={lg.id}
+              className={`ck-league-pill ${activeLeague === lg.id ? 'active' : ''}`}
+              onClick={() => setActiveLeague(lg.id)}
+            >
+              <span>{lg.icon}</span> {lg.name}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Format Filter Pills */}
       <div className="ck-format-filters">
         {FORMAT_FILTERS.map((f) => (
           <button
@@ -248,7 +335,7 @@ function CricketHomePage() {
       {loading && (
         <div className="ck-loading-box">
           <div className="ck-spinner"></div>
-          <p className="ck-empty">Loading latest cricket match details...</p>
+          <p className="ck-empty">Fetching live cricket scores from around the world...</p>
         </div>
       )}
 
@@ -257,8 +344,8 @@ function CricketHomePage() {
       {!loading && !error && matches.length === 0 && (
         <div className="ck-empty-state">
           <span className="ck-empty-icon">🏏</span>
-          <h3>No matches found</h3>
-          <p>No matches match your current filters. Try selecting "All Formats" or clearing your search.</p>
+          <h3>No matches found in this category</h3>
+          <p>Try switching categories, clearing search filters, or selecting "All Matches".</p>
         </div>
       )}
 
@@ -273,4 +360,4 @@ function CricketHomePage() {
   );
 }
 
-export default CricketHomePage;
+export default CricketHomePage;

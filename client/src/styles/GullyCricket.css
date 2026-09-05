@@ -1726,4 +1726,164 @@
   margin-top: 10px;
 }
 
+.gc-bigscreen-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.25), rgba(245, 158, 11, 0.1));
+  border: 1px solid rgba(251, 191, 36, 0.45);
+  color: #fef08a !important;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 800;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(251, 191, 36, 0.15);
+}
+
+.gc-bigscreen-link:hover {
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.4), rgba(245, 158, 11, 0.2));
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(251, 191, 36, 0.25);
+}
+
+/* ==========================================================================
+   GLOBAL RESPONSIVE DESIGN FOR GULLY CRICKET (MOBILE, TABLET, TV)
+   ========================================================================== */
+
+/* Tables and scroll containers */
+.gc-table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-bottom: 16px;
+  border-radius: var(--radius-md, 12px);
+}
+
+@media (max-width: 900px) {
+  .gc-stream-container {
+    padding: 16px 12px 60px;
+  }
+
+  .gc-current-play-card {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .gc-play-divider {
+    width: 100%;
+    height: 1px;
+    margin: 4px 0;
+  }
+
+  .gc-stream-control-strip {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .gc-ctrl-btn {
+    flex: 1 1 calc(50% - 8px);
+    justify-content: center;
+    text-align: center;
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 600px) {
+  .gc-container {
+    padding: 24px 12px 60px;
+  }
+
+  .gc-hero {
+    padding: 24px 14px;
+    margin-bottom: 24px;
+  }
+
+  .gc-title {
+    font-size: 1.6rem;
+  }
+
+  .gc-stream-header-nav {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .gc-stream-header-nav .gc-back-link,
+  .gc-stream-header-nav .gc-bigscreen-link {
+    justify-content: center;
+    text-align: center;
+  }
+
+  .gc-stream-control-strip {
+    flex-direction: column;
+  }
+
+  .gc-ctrl-btn {
+    width: 100%;
+    flex: 1 1 100%;
+  }
+
+  .gc-form-row {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .gc-form-field {
+    width: 100%;
+  }
+
+  .gc-hud-top-bar {
+    padding: 8px 10px;
+    font-size: 0.78rem;
+  }
+
+  .gc-hud-left-tags {
+    gap: 6px;
+  }
+
+  .gc-hud-match-title-tag {
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .gc-ball-alert-banner {
+    font-size: 1.1rem;
+    padding: 8px 16px;
+  }
+
+  .gc-batter-row,
+  .gc-bowler-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .gc-submit-btn {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+  }
+}
+
+@media (min-width: 1800px) {
+  .gc-container,
+  .gc-stream-container {
+    max-width: 1400px;
+  }
+
+  .gc-title {
+    font-size: 3.2rem;
+  }
+
+  .gc-video-viewport {
+    min-height: 580px;
+  }
+}
+
+
+
 

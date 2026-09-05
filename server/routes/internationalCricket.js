@@ -21,181 +21,54 @@ async function cachedFetch(cacheKey, url) {
 }
 
 // ---------------------------------------------------------------------------
-// Fallback Rich Cricbuzz Data Store
-// Provides hyper-realistic Cricbuzz match data when API key is unconfigured or rate limited
+// Extensible Leagues & Competitions Registry
+// ---------------------------------------------------------------------------
+const LEAGUES_REGISTRY = [
+  { id: 'all', name: 'All Matches', icon: '🌐' },
+  { id: 'international', name: 'International (Test/ODI/T20I)', icon: '🌍' },
+  { id: 'ipl', name: 'IPL (Indian Premier League)', icon: '🏆' },
+  { id: 'cpl', name: 'CPL (Caribbean Premier League)', icon: '🌴' },
+  { id: 'mlc', name: 'MLC (Major League Cricket)', icon: '🦅' },
+  { id: 'bbl', name: 'BBL (Big Bash League)', icon: '🦘' },
+  { id: 'psl', name: 'PSL (Pakistan Super League)', icon: '⚡' },
+  { id: 'the-hundred', name: 'The Hundred', icon: '💯' },
+  { id: 'sa20', name: 'SA20 (South Africa)', icon: '🇿🇦' },
+  { id: 'ilt20', name: 'ILT20 (International League T20)', icon: '🏜️' },
+  { id: 'bpl', name: 'BPL (Bangladesh Premier League)', icon: '🐅' },
+  { id: 'lpl', name: 'LPL (Lanka Premier League)', icon: '🦁' },
+];
+
+// ---------------------------------------------------------------------------
+// Comprehensive Cricbuzz Cricket Data Store
 // ---------------------------------------------------------------------------
 const MOCK_CRICKET_MATCHES = [
+  // 1. IND vs AUS T20I (Live - Thriller Chase)
   {
-    id: 'ind-vs-sl-test-1',
-    name: 'India vs Sri Lanka, 1st Test',
-    series: 'Sri Lanka tour of India, 2026',
-    matchType: 'test', // test, odi, t20, league, women
-    category: 'test',
-    status: '🔴 Day 4 - LIVE: Sri Lanka need 214 runs to win (Target: 423)',
-    isLive: true,
-    isCompleted: false,
-    venue: 'M. Chinnaswamy Stadium, Bengaluru',
-    date: '2026-08-18T04:00:00.000Z',
-    toss: 'India won the toss and elected to bat first',
-    umpires: 'Richard Illingworth, Nitin Menon',
-    referee: 'Javagal Srinath',
-    winProbability: { team1: 92, team2: 8 },
-    team1: {
-      name: 'India',
-      shortName: 'IND',
-      flag: '🇮🇳',
-      score: '445 & 252/9d',
-      details: '445/10 (118.2 ov) & 252/9d (68.5 ov)',
-    },
-    team2: {
-      name: 'Sri Lanka',
-      shortName: 'SL',
-      flag: '🇱🇰',
-      score: '174 & 208',
-      details: '174/10 (65.0 ov) & 208/10 (59.3 ov)',
-    },
-    scorecard: [
-      {
-        inningName: 'India 1st Innings',
-        teamName: 'India',
-        runs: 445,
-        wickets: 10,
-        overs: '118.2',
-        batting: [
-          { name: 'Rohit Sharma (C)', dismissal: 'c Mendis b Jayasuriya', runs: 120, balls: 194, fours: 14, sixes: 3, strikeRate: '61.86' },
-          { name: 'Yashasvi Jaiswal', dismissal: 'b Rajitha', runs: 54, balls: 88, fours: 7, sixes: 1, strikeRate: '61.36' },
-          { name: 'Shubman Gill', dismissal: 'lbw b Jayasuriya', runs: 32, balls: 56, fours: 4, sixes: 0, strikeRate: '57.14' },
-          { name: 'Virat Kohli', dismissal: 'lbw b Dhananjaya', runs: 89, balls: 142, fours: 9, sixes: 1, strikeRate: '62.68' },
-          { name: 'Rishabh Pant (WK)', dismissal: 'c & b Jayasuriya', runs: 96, balls: 97, fours: 11, sixes: 4, strikeRate: '98.97' },
-          { name: 'Shreyas Iyer', dismissal: 'c Dickwella b Jayasuriya', runs: 27, balls: 45, fours: 3, sixes: 0, strikeRate: '60.00' },
-          { name: 'Ravindra Jadeja', dismissal: 'c Karunaratne b Fernando', runs: 18, balls: 34, fours: 2, sixes: 0, strikeRate: '52.94' },
-          { name: 'Ravichandran Ashwin', dismissal: 'b Jayasuriya', runs: 6, balls: 15, fours: 1, sixes: 0, strikeRate: '40.00' },
-          { name: 'Kuldeep Yadav', dismissal: 'not out', runs: 12, balls: 28, fours: 1, sixes: 0, strikeRate: '42.86' },
-          { name: 'Jasprit Bumrah', dismissal: 'c Mendis b Rajitha', runs: 2, balls: 8, fours: 0, sixes: 0, strikeRate: '25.00' },
-          { name: 'Mohammed Siraj', dismissal: 'b Fernando', runs: 0, balls: 2, fours: 0, sixes: 0, strikeRate: '0.00' }
-        ],
-        bowling: [
-          { name: 'Kasun Rajitha', overs: '22.0', maidens: 4, runs: 78, wickets: 2, economy: '3.55' },
-          { name: 'Vishwa Fernando', overs: '18.2', maidens: 3, runs: 69, wickets: 2, economy: '3.76' },
-          { name: 'Prabath Jayasuriya', overs: '42.0', maidens: 8, runs: 145, wickets: 5, economy: '3.45' },
-          { name: 'Dhananjaya de Silva', overs: '21.0', maidens: 2, runs: 82, wickets: 1, economy: '3.90' },
-          { name: 'Ramesh Mendis', overs: '15.0', maidens: 1, runs: 61, wickets: 0, economy: '4.07' }
-        ]
-      },
-      {
-        inningName: 'Sri Lanka 1st Innings',
-        teamName: 'Sri Lanka',
-        runs: 174,
-        wickets: 10,
-        overs: '65.0',
-        batting: [
-          { name: 'Dimuth Karunaratne (C)', dismissal: 'b Shami', runs: 28, balls: 52, fours: 4, sixes: 0, strikeRate: '53.85' },
-          { name: 'Pathum Nissanka', dismissal: 'c Pant b Bumrah', runs: 61, balls: 110, fours: 8, sixes: 1, strikeRate: '55.45' },
-          { name: 'Kusal Mendis', dismissal: 'c Kohli b Ashwin', runs: 38, balls: 64, fours: 5, sixes: 0, strikeRate: '59.38' },
-          { name: 'Angelo Mathews', dismissal: 'c Rohit b Bumrah', runs: 12, balls: 30, fours: 1, sixes: 0, strikeRate: '40.00' },
-          { name: 'Dhananjaya de Silva', dismissal: 'lbw b Ashwin', runs: 10, balls: 25, fours: 1, sixes: 0, strikeRate: '40.00' },
-          { name: 'Charith Asalanka', dismissal: 'c & b Bumrah', runs: 5, balls: 16, fours: 0, sixes: 0, strikeRate: '31.25' },
-          { name: 'Niroshan Dickwella (WK)', dismissal: 'c Pant b Jadeja', runs: 14, balls: 28, fours: 2, sixes: 0, strikeRate: '50.00' },
-          { name: 'Prabath Jayasuriya', dismissal: 'b Bumrah', runs: 0, balls: 4, fours: 0, sixes: 0, strikeRate: '0.00' },
-          { name: 'Ramesh Mendis', dismissal: 'b Ashwin', runs: 2, balls: 12, fours: 0, sixes: 0, strikeRate: '16.67' },
-          { name: 'Vishwa Fernando', dismissal: 'not out', runs: 0, balls: 6, fours: 0, sixes: 0, strikeRate: '0.00' },
-          { name: 'Kasun Rajitha', dismissal: 'b Bumrah', runs: 0, balls: 3, fours: 0, sixes: 0, strikeRate: '0.00' }
-        ],
-        bowling: [
-          { name: 'Jasprit Bumrah', overs: '17.0', maidens: 6, runs: 24, wickets: 5, economy: '1.41' },
-          { name: 'Mohammed Siraj', overs: '10.0', maidens: 2, runs: 38, wickets: 1, economy: '3.80' },
-          { name: 'Ravichandran Ashwin', overs: '20.0', maidens: 5, runs: 46, wickets: 3, economy: '2.30' },
-          { name: 'Ravindra Jadeja', overs: '12.0', maidens: 3, runs: 32, wickets: 1, economy: '2.67' },
-          { name: 'Kuldeep Yadav', overs: '6.0', maidens: 1, runs: 28, wickets: 0, economy: '4.67' }
-        ]
-      },
-      {
-        inningName: 'India 2nd Innings',
-        teamName: 'India',
-        runs: 252,
-        wickets: 9,
-        overs: '68.5',
-        batting: [
-          { name: 'Mayank Agarwal', dismissal: 'run out (Sub)', runs: 22, balls: 40, fours: 3, sixes: 0, strikeRate: '55.00' },
-          { name: 'Rohit Sharma (C)', dismissal: 'c Mathews b Dhananjaya', runs: 46, balls: 79, fours: 4, sixes: 1, strikeRate: '58.23' },
-          { name: 'Hanuma Vihari', dismissal: 'b Praveen', runs: 35, balls: 74, fours: 4, sixes: 0, strikeRate: '47.30' },
-          { name: 'Virat Kohli', dismissal: 'lbw b Praveen', runs: 13, balls: 31, fours: 1, sixes: 0, strikeRate: '41.94' },
-          { name: 'Rishabh Pant (WK)', dismissal: 'c & b Praveen', runs: 50, balls: 31, fours: 7, sixes: 2, strikeRate: '161.29' },
-          { name: 'Shreyas Iyer', dismissal: 'lbw b Jayasuriya', runs: 92, balls: 111, fours: 9, sixes: 0, strikeRate: '82.88' },
-          { name: 'Ravindra Jadeja', dismissal: 'b Vishwa', runs: 22, balls: 45, fours: 2, sixes: 0, strikeRate: '48.89' },
-          { name: 'Ravichandran Ashwin', dismissal: 'c Dickwella b Jayasuriya', runs: 13, balls: 19, fours: 1, sixes: 0, strikeRate: '68.42' },
-          { name: 'Axar Patel', dismissal: 'b Suranga', runs: 9, balls: 12, fours: 1, sixes: 0, strikeRate: '75.00' },
-          { name: 'Mohammed Shami', dismissal: 'not out', runs: 16, balls: 10, fours: 2, sixes: 1, strikeRate: '160.00' }
-        ],
-        bowling: [
-          { name: 'Suranga Lakmal', overs: '10.0', maidens: 1, runs: 34, wickets: 1, economy: '3.40' },
-          { name: 'Vishwa Fernando', overs: '9.0', maidens: 0, runs: 48, wickets: 1, economy: '5.33' },
-          { name: 'Praveen Jayawickrama', overs: '19.0', maidens: 2, runs: 78, wickets: 4, economy: '4.11' },
-          { name: 'Dhananjaya de Silva', overs: '12.0', maidens: 1, runs: 42, wickets: 1, economy: '3.50' },
-          { name: 'Prabath Jayasuriya', overs: '18.5', maidens: 3, runs: 48, wickets: 2, economy: '2.55' }
-        ]
-      },
-      {
-        inningName: 'Sri Lanka 2nd Innings',
-        teamName: 'Sri Lanka',
-        runs: 208,
-        wickets: 10,
-        overs: '59.3',
-        batting: [
-          { name: 'Dimuth Karunaratne (C)', dismissal: 'b Bumrah', runs: 107, balls: 174, fours: 15, sixes: 0, strikeRate: '61.49' },
-          { name: 'Lahiru Thirimanne', dismissal: 'lbw b Shami', runs: 0, balls: 6, fours: 0, sixes: 0, strikeRate: '0.00' },
-          { name: 'Kusal Mendis', dismissal: 'st Pant b Ashwin', runs: 54, balls: 60, fours: 8, sixes: 0, strikeRate: '90.00' },
-          { name: 'Angelo Mathews', dismissal: 'b Jadeja', runs: 1, balls: 5, fours: 0, sixes: 0, strikeRate: '20.00' },
-          { name: 'Dhananjaya de Silva', dismissal: 'c Vihari b Ashwin', runs: 4, balls: 21, fours: 0, sixes: 0, strikeRate: '19.05' },
-          { name: 'Niroshan Dickwella', dismissal: 'st Pant b Axar', runs: 12, balls: 19, fours: 1, sixes: 0, strikeRate: '63.16' },
-          { name: 'Charith Asalanka', dismissal: 'c Rohit b Axar', runs: 5, balls: 18, fours: 1, sixes: 0, strikeRate: '27.78' },
-          { name: 'Lasith Embuldeniya', dismissal: 'lbw b Ashwin', runs: 2, balls: 11, fours: 0, sixes: 0, strikeRate: '18.18' },
-          { name: 'Suranga Lakmal', dismissal: 'b Jasprit', runs: 1, balls: 3, fours: 0, sixes: 0, strikeRate: '33.33' },
-          { name: 'Praveen Jayawickrama', dismissal: 'c substitute b Ashwin', runs: 0, balls: 7, fours: 0, sixes: 0, strikeRate: '0.00' },
-          { name: 'Vishwa Fernando', dismissal: 'not out', runs: 2, balls: 3, fours: 0, sixes: 0, strikeRate: '66.67' }
-        ],
-        bowling: [
-          { name: 'Jasprit Bumrah', overs: '9.0', maidens: 1, runs: 23, wickets: 3, economy: '2.56' },
-          { name: 'Mohammed Shami', overs: '6.0', maidens: 0, runs: 26, wickets: 1, economy: '4.33' },
-          { name: 'Ravichandran Ashwin', overs: '19.3', maidens: 3, runs: 55, wickets: 4, economy: '2.82' },
-          { name: 'Ravindra Jadeja', overs: '14.0', maidens: 2, runs: 48, wickets: 1, economy: '3.43' },
-          { name: 'Axar Patel', overs: '11.0', maidens: 1, runs: 42, wickets: 2, economy: '3.82' }
-        ]
-      }
-    ],
-    commentary: [
-      { over: '59.3', text: 'OUT! Cleaned him up! Ashwin gets the final wicket! PraveenJayawickrama steps out, misses completely and India win by 238 runs!', event: 'wicket' },
-      { over: '59.1', text: 'Ashwin into the attack. Full length around off, defended forward.', event: 'dot' },
-      { over: '58.6', text: 'Bumrah bowls a blistering yorker! Blocked nicely by Karunaratne.', event: 'dot' },
-      { over: '58.4', text: 'FOUR! Driven beautifully through extra cover! Dimuth Karunaratne completes a sensational Test hundred!', event: 'four' },
-      { over: '57.2', text: 'SIX! Rishabh Pant steps out and lofts Jayasuriya over long-on for a huge six!', event: 'six' }
-    ],
-    squads: {
-      team1: ['Rohit Sharma (C)', 'Yashasvi Jaiswal', 'Shubman Gill', 'Virat Kohli', 'Rishabh Pant (WK)', 'Shreyas Iyer', 'Ravindra Jadeja', 'Ravichandran Ashwin', 'Kuldeep Yadav', 'Jasprit Bumrah', 'Mohammed Siraj'],
-      team2: ['Dimuth Karunaratne (C)', 'Pathum Nissanka', 'Kusal Mendis', 'Angelo Mathews', 'Dhananjaya de Silva', 'Charith Asalanka', 'Niroshan Dickwella (WK)', 'Prabath Jayasuriya', 'Ramesh Mendis', 'Vishwa Fernando', 'Kasun Rajitha']
-    }
-  },
-  {
-    id: 'ind-vs-aus-t20-2',
+    id: 'ind-vs-aus-t20-2026',
     name: 'India vs Australia, 2nd T20I',
-    series: 'Australia tour of India, 2026',
+    series: 'Australia Tour of India 2026',
+    leagueId: 'international',
     matchType: 't20',
     category: 't20',
-    status: '🔴 LIVE: India need 28 runs in 18 balls',
+    format: 'T20I',
+    status: '🔴 LIVE: India need 28 runs in 16 balls (Target: 187)',
     isLive: true,
     isCompleted: false,
     venue: 'Wankhede Stadium, Mumbai',
-    date: '2026-08-19T13:30:00.000Z',
-    toss: 'India won the toss and elected to field',
-    umpires: 'K. N. Ananthapadmanabhan, Rohan Pandit',
+    date: '2026-09-05T13:30:00.000Z',
+    toss: 'India won the toss and elected to bowl first',
+    umpires: 'Nitin Menon, Richard Illingworth',
     referee: 'Javagal Srinath',
-    winProbability: { team1: 76, team2: 24 },
+    crr: '10.22',
+    rrr: '10.50',
+    target: 187,
+    winProbability: { team1: 78, team2: 22 },
     team1: {
       name: 'India',
       shortName: 'IND',
       flag: '🇮🇳',
-      score: '159/3 (17.0 ov)',
-      details: 'Target: 187 runs',
+      score: '159/4 (17.2 ov)',
+      details: '159/4 (17.2 ov) · Need 28 off 16',
     },
     team2: {
       name: 'Australia',
@@ -204,6 +77,27 @@ const MOCK_CRICKET_MATCHES = [
       score: '186/6 (20.0 ov)',
       details: '186/6 (20.0 ov)',
     },
+    currentBatters: [
+      { name: 'Virat Kohli', runs: 72, balls: 45, fours: 7, sixes: 3, strikeRate: '160.00', onStrike: true },
+      { name: 'Hardik Pandya', runs: 24, balls: 14, fours: 2, sixes: 1, strikeRate: '171.43', onStrike: false },
+    ],
+    currentBowler: {
+      name: 'Pat Cummins',
+      overs: '3.2',
+      maidens: 0,
+      runs: 32,
+      wickets: 1,
+      economy: '9.60',
+    },
+    currentOver: {
+      overNumber: 18,
+      balls: ['1', '4', '0', 'W', '2', '6'],
+    },
+    recentOvers: [
+      { overNumber: 18, balls: ['1', '4', '0', 'W', '2', '6'] },
+      { overNumber: 17, balls: ['2', '1', '6', '1', '4', '1'] },
+      { overNumber: 16, balls: ['0', '1', '2', '4', '1', '1'] },
+    ],
     scorecard: [
       {
         inningName: 'Australia Innings',
@@ -216,191 +110,467 @@ const MOCK_CRICKET_MATCHES = [
           { name: 'Mitchell Marsh (C)', dismissal: 'c Hardik b Axar', runs: 42, balls: 26, fours: 4, sixes: 2, strikeRate: '161.54' },
           { name: 'Glenn Maxwell', dismissal: 'c Suryakumar b Kuldeep', runs: 34, balls: 18, fours: 3, sixes: 3, strikeRate: '188.89' },
           { name: 'Marcus Stoinis', dismissal: 'not out', runs: 28, balls: 16, fours: 2, sixes: 2, strikeRate: '175.00' },
-          { name: 'Tim David', dismissal: 'b Bumrah', runs: 12, balls: 8, fours: 1, sixes: 1, strikeRate: '150.00' }
+          { name: 'Tim David', dismissal: 'b Bumrah', runs: 12, balls: 8, fours: 1, sixes: 1, strikeRate: '150.00' },
         ],
         bowling: [
           { name: 'Jasprit Bumrah', overs: '4.0', maidens: 0, runs: 28, wickets: 2, economy: '7.00' },
           { name: 'Arshdeep Singh', overs: '4.0', maidens: 0, runs: 42, wickets: 2, economy: '10.50' },
           { name: 'Axar Patel', overs: '4.0', maidens: 0, runs: 34, wickets: 1, economy: '8.50' },
           { name: 'Kuldeep Yadav', overs: '4.0', maidens: 0, runs: 38, wickets: 1, economy: '9.50' },
-          { name: 'Hardik Pandya', overs: '4.0', maidens: 0, runs: 40, wickets: 0, economy: '10.00' }
-        ]
+          { name: 'Hardik Pandya', overs: '4.0', maidens: 0, runs: 40, wickets: 0, economy: '10.00' },
+        ],
       },
       {
         inningName: 'India Innings (Chasing)',
         teamName: 'India',
         runs: 159,
-        wickets: 3,
-        overs: '17.0',
+        wickets: 4,
+        overs: '17.2',
         batting: [
-          { name: 'Yashasvi Jaiswal', dismissal: 'c Stoinis b Zampa', runs: 36, balls: 21, fours: 5, sixes: 1, strikeRate: '171.43' },
-          { name: 'Abhishek Sharma', dismissal: 'c Head b Cummins', runs: 22, balls: 14, fours: 3, sixes: 1, strikeRate: '157.14' },
-          { name: 'Suryakumar Yadav (C)', dismissal: 'not out', runs: 68, balls: 39, fours: 6, sixes: 4, strikeRate: '174.36' },
-          { name: 'Sanju Samson (WK)', dismissal: 'b Ellis', runs: 14, balls: 12, fours: 1, sixes: 0, strikeRate: '116.67' },
-          { name: 'Hardik Pandya', dismissal: 'not out', runs: 16, balls: 11, fours: 1, sixes: 1, strikeRate: '145.45' }
+          { name: 'Rohit Sharma', dismissal: 'c Inglis b Starc', runs: 38, balls: 22, fours: 5, sixes: 2, strikeRate: '172.73' },
+          { name: 'Yashasvi Jaiswal', dismissal: 'c Stoinis b Zampa', runs: 18, balls: 12, fours: 3, sixes: 0, strikeRate: '150.00' },
+          { name: 'Virat Kohli', dismissal: 'batting', runs: 72, balls: 45, fours: 7, sixes: 3, strikeRate: '160.00' },
+          { name: 'Suryakumar Yadav (C)', dismissal: 'c David b Cummins', runs: 21, balls: 13, fours: 2, sixes: 1, strikeRate: '161.54' },
+          { name: 'Hardik Pandya', dismissal: 'batting', runs: 24, balls: 14, fours: 2, sixes: 1, strikeRate: '171.43' },
         ],
         bowling: [
-          { name: 'Pat Cummins', overs: '4.0', maidens: 0, runs: 36, wickets: 1, economy: '9.00' },
-          { name: 'Mitchell Starc', overs: '3.0', maidens: 0, runs: 32, wickets: 0, economy: '10.67' },
+          { name: 'Mitchell Starc', overs: '4.0', maidens: 0, runs: 38, wickets: 1, economy: '9.50' },
+          { name: 'Pat Cummins', overs: '3.2', maidens: 0, runs: 32, wickets: 1, economy: '9.60' },
           { name: 'Adam Zampa', overs: '4.0', maidens: 0, runs: 34, wickets: 1, economy: '8.50' },
           { name: 'Nathan Ellis', overs: '3.0', maidens: 0, runs: 28, wickets: 1, economy: '9.33' },
-          { name: 'Marcus Stoinis', overs: '3.0', maidens: 0, runs: 28, wickets: 0, economy: '9.33' }
-        ]
-      }
+          { name: 'Marcus Stoinis', overs: '3.0', maidens: 0, runs: 27, wickets: 0, economy: '9.00' },
+        ],
+      },
     ],
     commentary: [
-      { over: '16.6', text: 'FOUR! Scoop shot over short fine leg by Suryakumar Yadav! Pure class!', event: 'four' },
-      { over: '16.4', text: 'SIX! Hardik Pandya sends Cummins straight back over his head into the stands!', event: 'six' },
-      { over: '15.3', text: 'Single taken towards deep cover. India keep the scoreboard ticking.', event: 'dot' },
-      { over: '14.1', text: 'FIFTY for Suryakumar Yadav off just 31 balls! High quality innings.', event: 'four' }
+      { over: '17.2', text: 'SIX! Virat Kohli steps out and sends Cummins soaring over long-on! What a shot under pressure!', event: 'six' },
+      { over: '17.1', text: 'Two runs. Driven firmly through deep cover, quick running between the wickets.', event: 'two' },
+      { over: '16.6', text: 'OUT! Suryakumar Yadav miscues the lofted drive, straight to Tim David at long-off!', event: 'wicket' },
+      { over: '16.5', text: 'Dot ball. Slower bouncer outside off, beaten.', event: 'dot' },
+      { over: '16.4', text: 'FOUR! Slashed over backward point with surgical precision!', event: 'four' },
+      { over: '16.3', text: 'Single taken towards third man.', event: 'one' },
     ],
     squads: {
-      team1: ['Suryakumar Yadav (C)', 'Yashasvi Jaiswal', 'Abhishek Sharma', 'Sanju Samson (WK)', 'Hardik Pandya', 'Rinku Singh', 'Axar Patel', 'Kuldeep Yadav', 'Jasprit Bumrah', 'Arshdeep Singh', 'Ravi Bishnoi'],
-      team2: ['Mitchell Marsh (C)', 'Travis Head', 'Josh Inglis (WK)', 'Glenn Maxwell', 'Marcus Stoinis', 'Tim David', 'Matthew Short', 'Pat Cummins', 'Mitchell Starc', 'Adam Zampa', 'Nathan Ellis']
-    }
+      team1: ['Rohit Sharma', 'Yashasvi Jaiswal', 'Virat Kohli', 'Suryakumar Yadav (C)', 'Hardik Pandya', 'Rishabh Pant (WK)', 'Axar Patel', 'Kuldeep Yadav', 'Jasprit Bumrah', 'Arshdeep Singh', 'Mohammed Siraj'],
+      team2: ['Travis Head', 'Mitchell Marsh (C)', 'Josh Inglis (WK)', 'Glenn Maxwell', 'Marcus Stoinis', 'Tim David', 'Pat Cummins', 'Mitchell Starc', 'Adam Zampa', 'Nathan Ellis', 'Josh Hazlewood'],
+    },
   },
+
+  // 2. ENG vs SA 3rd ODI (Live)
   {
-    id: 'eng-vs-sa-odi-3',
+    id: 'eng-vs-sa-odi-2026',
     name: 'England vs South Africa, 3rd ODI',
-    series: 'South Africa tour of England, 2026',
+    series: 'South Africa Tour of England 2026',
+    leagueId: 'international',
     matchType: 'odi',
     category: 'odi',
-    status: '✅ England won by 42 runs',
-    isLive: false,
-    isCompleted: true,
+    format: 'ODI',
+    status: '🔴 LIVE: South Africa need 84 runs in 58 balls (Target: 318)',
+    isLive: true,
+    isCompleted: false,
     venue: "Lord's, London",
-    date: '2026-08-17T10:00:00.000Z',
-    toss: 'England won the toss and elected to bat',
-    umpires: 'Kumar Dharmasena, Alex Wharf',
+    date: '2026-09-05T10:00:00.000Z',
+    toss: 'England won the toss and elected to bat first',
+    umpires: 'Alex Wharf, Kumar Dharmasena',
     referee: 'Richie Richardson',
-    winProbability: { team1: 100, team2: 0 },
+    crr: '5.81',
+    rrr: '8.69',
+    target: 318,
+    winProbability: { team1: 58, team2: 42 },
     team1: {
       name: 'England',
       shortName: 'ENG',
       flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿',
-      score: '312/7 (50.0 ov)',
-      details: '312/7 (50.0 ov)',
+      score: '317/7 (50.0 ov)',
+      details: '317/7 (50.0 ov)',
     },
     team2: {
       name: 'South Africa',
       shortName: 'SA',
       flag: '🇿🇦',
-      score: '270/10 (47.1 ov)',
-      details: 'Target: 313 runs',
+      score: '234/5 (40.2 ov)',
+      details: '234/5 (40.2 ov) · Need 84 off 58',
     },
+    currentBatters: [
+      { name: 'Heinrich Klaasen', runs: 82, balls: 64, fours: 8, sixes: 4, strikeRate: '128.12', onStrike: true },
+      { name: 'David Miller', runs: 36, balls: 28, fours: 3, sixes: 1, strikeRate: '128.57', onStrike: false },
+    ],
+    currentBowler: {
+      name: 'Jofra Archer',
+      overs: '8.2',
+      maidens: 1,
+      runs: 48,
+      wickets: 2,
+      economy: '5.76',
+    },
+    currentOver: {
+      overNumber: 41,
+      balls: ['1', '4', '6', '1', '2', '0'],
+    },
+    recentOvers: [
+      { overNumber: 41, balls: ['1', '4', '6', '1', '2', '0'] },
+      { overNumber: 40, balls: ['0', '1', '1', '4', '1', 'W'] },
+    ],
     scorecard: [
       {
         inningName: 'England Innings',
         teamName: 'England',
-        runs: 312,
+        runs: 317,
         wickets: 7,
         overs: '50.0',
         batting: [
-          { name: 'Phil Salt (WK)', dismissal: 'c Klaasen b Rabada', runs: 74, balls: 62, fours: 9, sixes: 2, strikeRate: '119.35' },
-          { name: 'Harry Brook (C)', dismissal: 'c Jansen b Shamsi', runs: 110, balls: 98, fours: 12, sixes: 3, strikeRate: '112.24' },
-          { name: 'Liam Livingstone', dismissal: 'not out', runs: 45, balls: 28, fours: 3, sixes: 3, strikeRate: '160.71' }
+          { name: 'Phil Salt (WK)', dismissal: 'c Markram b Rabada', runs: 68, balls: 54, fours: 8, sixes: 2, strikeRate: '125.93' },
+          { name: 'Ben Duckett', dismissal: 'b Jansen', runs: 42, balls: 48, fours: 5, sixes: 0, strikeRate: '87.50' },
+          { name: 'Harry Brook (C)', dismissal: 'c Klaasen b Shamsi', runs: 112, balls: 96, fours: 12, sixes: 3, strikeRate: '116.67' },
+          { name: 'Liam Livingstone', dismissal: 'not out', runs: 52, balls: 34, fours: 4, sixes: 3, strikeRate: '152.94' },
         ],
         bowling: [
-          { name: 'Kagiso Rabada', overs: '10.0', maidens: 1, runs: 58, wickets: 3, economy: '5.80' },
-          { name: 'Anrich Nortje', overs: '10.0', maidens: 0, runs: 64, wickets: 2, economy: '6.40' }
-        ]
+          { name: 'Kagiso Rabada', overs: '10.0', maidens: 1, runs: 62, wickets: 3, economy: '6.20' },
+          { name: 'Marco Jansen', overs: '10.0', maidens: 0, runs: 58, wickets: 2, economy: '5.80' },
+          { name: 'Tabraiz Shamsi', overs: '10.0', maidens: 0, runs: 68, wickets: 2, economy: '6.80' },
+        ],
       },
-      {
-        inningName: 'South Africa Innings',
-        teamName: 'South Africa',
-        runs: 270,
-        wickets: 10,
-        overs: '47.1',
-        batting: [
-          { name: 'Aiden Markram (C)', dismissal: 'c Buttler b Rashid', runs: 82, balls: 84, fours: 8, sixes: 2, strikeRate: '97.62' },
-          { name: 'Heinrich Klaasen', dismissal: 'c Brook b Wood', runs: 65, balls: 52, fours: 5, sixes: 4, strikeRate: '125.00' }
-        ],
-        bowling: [
-          { name: 'Adil Rashid', overs: '10.0', maidens: 0, runs: 48, wickets: 4, economy: '4.80' },
-          { name: 'Mark Wood', overs: '8.1', maidens: 1, runs: 42, wickets: 3, economy: '5.14' }
-        ]
-      }
     ],
     commentary: [
-      { over: '47.1', text: 'OUT! Mark Wood cleans up Rabada! England win by 42 runs and seal the ODI series 2-1!', event: 'wicket' }
+      { over: '40.2', text: 'FOUR! Driven powerfully through covers by Heinrich Klaasen!', event: 'four' },
     ],
-    squads: {
-      team1: ['Harry Brook (C)', 'Phil Salt (WK)', 'Ben Duckett', 'Joe Root', 'Liam Livingstone', 'Sam Curran', 'Adil Rashid', 'Mark Wood'],
-      team2: ['Aiden Markram (C)', 'Quinton de Kock (WK)', 'Rassie van der Dussen', 'Heinrich Klaasen', 'David Miller', 'Marco Jansen', 'Kagiso Rabada']
-    }
+    squads: { team1: [], team2: [] },
   },
+
+  // 3. NZ vs PAK Test Match (Live - Day 4)
   {
-    id: 'mi-vs-csk-ipl-2026',
-    name: 'Mumbai Indians vs Chennai Super Kings, Match 18',
-    series: 'Indian Premier League 2026',
-    matchType: 'league',
-    category: 'league',
-    status: '📅 Upcoming · Starts tomorrow at 7:30 PM IST',
+    id: 'nz-vs-pak-test-2026',
+    name: 'New Zealand vs Pakistan, 1st Test',
+    series: 'Pakistan Tour of New Zealand 2026',
+    leagueId: 'international',
+    matchType: 'test',
+    category: 'test',
+    format: 'Test',
+    status: '🔴 Day 4 - LIVE: Pakistan need 142 runs to win (Target: 298)',
+    isLive: true,
+    isCompleted: false,
+    venue: 'Seddon Park, Hamilton',
+    date: '2026-09-02T22:00:00.000Z',
+    toss: 'New Zealand won the toss and elected to bat first',
+    umpires: 'Chris Gaffaney, Marais Erasmus',
+    referee: 'David Boon',
+    crr: '3.12',
+    rrr: '—',
+    target: 298,
+    winProbability: { team1: 60, team2: 40 },
+    team1: {
+      name: 'New Zealand',
+      shortName: 'NZ',
+      flag: '🇳🇿',
+      score: '348 & 216',
+      details: '348/10 (98.4 ov) & 216/10 (64.2 ov)',
+    },
+    team2: {
+      name: 'Pakistan',
+      shortName: 'PAK',
+      flag: '🇵🇰',
+      score: '266 & 156/4 (50.0 ov)',
+      details: '266/10 (84.1 ov) & 156/4 (50.0 ov)',
+    },
+    currentBatters: [
+      { name: 'Babar Azam (C)', runs: 68, balls: 142, fours: 8, sixes: 0, strikeRate: '47.89', onStrike: true },
+      { name: 'Mohammad Rizwan (WK)', runs: 34, balls: 68, fours: 4, sixes: 0, strikeRate: '50.00', onStrike: false },
+    ],
+    currentBowler: {
+      name: 'Trent Boult',
+      overs: '14.0',
+      maidens: 4,
+      runs: 38,
+      wickets: 2,
+      economy: '2.71',
+    },
+    currentOver: {
+      overNumber: 50,
+      balls: ['0', '0', '1', '0', '4', '0'],
+    },
+    recentOvers: [
+      { overNumber: 50, balls: ['0', '0', '1', '0', '4', '0'] },
+    ],
+    scorecard: [],
+    commentary: [
+      { over: '49.5', text: 'FOUR! Elegant on-drive from Babar Azam, beating mid-on to the fence.', event: 'four' },
+    ],
+    squads: { team1: [], team2: [] },
+  },
+
+  // 4. BAN vs SL T20I (Upcoming)
+  {
+    id: 'ban-vs-sl-t20-2026',
+    name: 'Bangladesh vs Sri Lanka, 1st T20I',
+    series: 'Sri Lanka Tour of Bangladesh 2026',
+    leagueId: 'international',
+    matchType: 't20',
+    category: 't20',
+    format: 'T20I',
+    status: '📅 Upcoming · Starts today at 6:30 PM IST',
     isLive: false,
     isCompleted: false,
-    venue: 'Wankhede Stadium, Mumbai',
-    date: '2026-08-20T14:00:00.000Z',
+    venue: 'Sher-e-Bangla National Cricket Stadium, Mirpur',
+    date: '2026-09-05T13:00:00.000Z',
+    toss: 'Toss at 6:00 PM IST',
+    team1: { name: 'Bangladesh', shortName: 'BAN', flag: '🇧🇩', score: null, details: 'Yet to bat' },
+    team2: { name: 'Sri Lanka', shortName: 'SL', flag: '🇱🇰', score: null, details: 'Yet to bat' },
+    scorecard: [],
+    commentary: [],
+    squads: { team1: [], team2: [] },
+  },
+
+  // 5. AFG vs WI ODI (Completed)
+  {
+    id: 'afg-vs-wi-odi-2026',
+    name: 'Afghanistan vs West Indies, 2nd ODI',
+    series: 'Afghanistan vs West Indies in UAE 2026',
+    leagueId: 'international',
+    matchType: 'odi',
+    category: 'odi',
+    format: 'ODI',
+    status: '✅ Afghanistan won by 38 runs',
+    isLive: false,
+    isCompleted: true,
+    venue: 'Sharjah Cricket Stadium, UAE',
+    date: '2026-09-04T10:00:00.000Z',
+    toss: 'Afghanistan won the toss and elected to bat',
+    team1: { name: 'Afghanistan', shortName: 'AFG', flag: '🇦🇫', score: '284/6 (50.0 ov)', details: '284/6 (50.0 ov)' },
+    team2: { name: 'West Indies', shortName: 'WI', flag: '🌴', score: '246/10 (46.4 ov)', details: 'Target: 285' },
+    scorecard: [],
+    commentary: [],
+    squads: { team1: [], team2: [] },
+  },
+
+  // 6. IRE vs ZIM T20I (Completed)
+  {
+    id: 'ire-vs-zim-t20-2026',
+    name: 'Ireland vs Zimbabwe, 3rd T20I',
+    series: 'Zimbabwe Tour of Ireland 2026',
+    leagueId: 'international',
+    matchType: 't20',
+    category: 't20',
+    format: 'T20I',
+    status: '✅ Ireland won by 5 wickets',
+    isLive: false,
+    isCompleted: true,
+    venue: 'Malahide, Dublin',
+    date: '2026-09-03T14:30:00.000Z',
+    toss: 'Ireland won the toss and elected to bowl',
+    team1: { name: 'Ireland', shortName: 'IRE', flag: '🇮🇪', score: '168/5 (19.1 ov)', details: 'Target: 165' },
+    team2: { name: 'Zimbabwe', shortName: 'ZIM', flag: '🇿🇼', score: '164/7 (20.0 ov)', details: '164/7 (20.0 ov)' },
+    scorecard: [],
+    commentary: [],
+    squads: { team1: [], team2: [] },
+  },
+
+  // 7. IPL: CSK vs MI (Upcoming Blockbuster)
+  {
+    id: 'csk-vs-mi-ipl-2026',
+    name: 'Chennai Super Kings vs Mumbai Indians, Match 24',
+    series: 'Indian Premier League 2026',
+    leagueId: 'ipl',
+    matchType: 'league',
+    category: 'league',
+    format: 'T20',
+    status: '📅 Upcoming · El Clásico of IPL · Tomorrow at 7:30 PM IST',
+    isLive: false,
+    isCompleted: false,
+    venue: 'M. A. Chidambaram Stadium, Chepauk, Chennai',
+    date: '2026-09-06T14:00:00.000Z',
     toss: 'Toss at 7:00 PM IST',
-    umpires: 'TBD',
-    referee: 'TBD',
-    winProbability: { team1: 50, team2: 50 },
-    team1: { name: 'Mumbai Indians', shortName: 'MI', flag: '🟦', score: null, details: 'Match starts at 7:30 PM' },
-    team2: { name: 'Chennai Super Kings', shortName: 'CSK', flag: '🟨', score: null, details: 'Match starts at 7:30 PM' },
+    winProbability: { team1: 52, team2: 48 },
+    team1: { name: 'Chennai Super Kings', shortName: 'CSK', flag: '🦁', score: null, details: 'Match starts tomorrow' },
+    team2: { name: 'Mumbai Indians', shortName: 'MI', flag: '🟦', score: null, details: 'Match starts tomorrow' },
     scorecard: [],
     commentary: [],
     squads: {
-      team1: ['Hardik Pandya (C)', 'Rohit Sharma', 'Suryakumar Yadav', 'Ishan Kishan (WK)', 'Jasprit Bumrah', 'Tilak Varma'],
-      team2: ['Ruturaj Gaikwad (C)', 'MS Dhoni (WK)', 'Ravindra Jadeja', 'Shivam Dube', 'Matheesha Pathirana', 'Rachin Ravindra']
-    }
+      team1: ['Ruturaj Gaikwad (C)', 'MS Dhoni (WK)', 'Ravindra Jadeja', 'Shivam Dube', 'Matheesha Pathirana', 'Rachin Ravindra'],
+      team2: ['Hardik Pandya (C)', 'Rohit Sharma', 'Suryakumar Yadav', 'Ishan Kishan (WK)', 'Jasprit Bumrah', 'Tilak Varma'],
+    },
   },
+
+  // 8. IPL: RCB vs KKR (Live Thriller)
   {
-    id: 'aus-w-vs-ind-w-odi-1',
-    name: 'Australia Women vs India Women, 1st ODI',
-    series: 'India Women tour of Australia, 2026',
-    matchType: 'women',
-    category: 'women',
-    status: '🔴 LIVE: Australia Women batting in 1st Innings',
+    id: 'rcb-vs-kkr-ipl-2026',
+    name: 'Royal Challengers Bengaluru vs Kolkata Knight Riders',
+    series: 'Indian Premier League 2026',
+    leagueId: 'ipl',
+    matchType: 'league',
+    category: 'league',
+    format: 'T20',
+    status: '🔴 LIVE: RCB need 42 runs in 24 balls (Target: 215)',
     isLive: true,
     isCompleted: false,
-    venue: 'MCG, Melbourne',
-    date: '2026-08-19T06:00:00.000Z',
-    toss: 'Australia Women won the toss and elected to bat',
-    umpires: 'Claire Polosak, Eloise Sheridan',
-    referee: 'GS Lakshmi',
+    venue: 'M. Chinnaswamy Stadium, Bengaluru',
+    date: '2026-09-05T14:00:00.000Z',
+    toss: 'RCB won the toss and elected to field',
+    crr: '10.88',
+    rrr: '10.50',
+    target: 215,
     winProbability: { team1: 65, team2: 35 },
-    team1: { name: 'Australia Women', shortName: 'AUS-W', flag: '🇦🇺', score: '215/4 (40.2 ov)', details: '215/4 (40.2 ov)' },
-    team2: { name: 'India Women', shortName: 'IND-W', flag: '🇮🇳', score: 'Yet to bat', details: 'Yet to bat' },
-    scorecard: [
-      {
-        inningName: 'Australia Women 1st Innings',
-        teamName: 'Australia Women',
-        runs: 215,
-        wickets: 4,
-        overs: '40.2',
-        batting: [
-          { name: 'Alyssa Healy (C & WK)', dismissal: 'c Mandhana b Deepti', runs: 64, balls: 72, fours: 8, sixes: 1, strikeRate: '88.89' },
-          { name: 'Beth Mooney', dismissal: 'not out', runs: 78, balls: 85, fours: 9, sixes: 0, strikeRate: '91.76' },
-          { name: 'Ellyse Perry', dismissal: 'c Harmanpreet b Renuka', runs: 32, balls: 40, fours: 4, sixes: 0, strikeRate: '80.00' }
-        ],
-        bowling: [
-          { name: 'Deepti Sharma', overs: '9.0', maidens: 1, runs: 42, wickets: 2, economy: '4.67' },
-          { name: 'Renuka Singh', overs: '8.0', maidens: 0, runs: 38, wickets: 1, economy: '4.75' }
-        ]
-      }
+    team1: { name: 'Royal Challengers Bengaluru', shortName: 'RCB', flag: '🔴', score: '173/3 (16.0 ov)', details: '173/3 (16.0 ov) · Target: 215' },
+    team2: { name: 'Kolkata Knight Riders', shortName: 'KKR', flag: '🟣', score: '214/5 (20.0 ov)', details: '214/5 (20.0 ov)' },
+    currentBatters: [
+      { name: 'Virat Kohli', runs: 86, balls: 48, fours: 9, sixes: 4, strikeRate: '179.17', onStrike: true },
+      { name: 'Glenn Maxwell', runs: 28, balls: 14, fours: 2, sixes: 2, strikeRate: '200.00', onStrike: false },
     ],
+    currentBowler: { name: 'Varun Chakaravarthy', overs: '3.0', maidens: 0, runs: 32, wickets: 1, economy: '10.67' },
+    currentOver: { overNumber: 16, balls: ['1', '6', '4', '1', '2', '6'] },
+    recentOvers: [{ overNumber: 16, balls: ['1', '6', '4', '1', '2', '6'] }],
+    scorecard: [],
     commentary: [
-      { over: '40.2', text: 'FOUR! Beth Mooney cuts it fine past third man for four runs!', event: 'four' }
+      { over: '15.6', text: 'SIX! Maxwell launches it into the top tier of Chinnaswamy Stadium!', event: 'six' },
     ],
-    squads: {
-      team1: ['Alyssa Healy (C & WK)', 'Beth Mooney', 'Ellyse Perry', 'Ashleigh Gardner', 'Tahlia McGrath', 'Megan Schutt'],
-      team2: ['Harmanpreet Kaur (C)', 'Smriti Mandhana', 'Shafali Verma', 'Jemimah Rodrigues', 'Deepti Sharma', 'Richa Ghosh (WK)']
-    }
-  }
+    squads: { team1: [], team2: [] },
+  },
+
+  // 9. CPL: Trinbago Knight Riders vs Guyana Amazon Warriors (Live)
+  {
+    id: 'tkr-vs-gaw-cpl-2026',
+    name: 'Trinbago Knight Riders vs Guyana Amazon Warriors',
+    series: 'Caribbean Premier League 2026',
+    leagueId: 'cpl',
+    matchType: 'league',
+    category: 'league',
+    format: 'T20',
+    status: '🔴 LIVE: TKR need 18 runs in 12 balls (Target: 172)',
+    isLive: true,
+    isCompleted: false,
+    venue: "Queen's Park Oval, Port of Spain, Trinidad",
+    date: '2026-09-05T17:00:00.000Z',
+    toss: 'Trinbago Knight Riders won the toss and elected to bowl',
+    crr: '8.56',
+    rrr: '9.00',
+    target: 172,
+    winProbability: { team1: 72, team2: 28 },
+    team1: { name: 'Trinbago Knight Riders', shortName: 'TKR', flag: '🔴', score: '154/4 (18.0 ov)', details: '154/4 (18.0 ov)' },
+    team2: { name: 'Guyana Amazon Warriors', shortName: 'GAW', flag: '🟢', score: '171/7 (20.0 ov)', details: '171/7 (20.0 ov)' },
+    currentBatters: [
+      { name: 'Kieron Pollard (C)', runs: 42, balls: 22, fours: 3, sixes: 4, strikeRate: '190.91', onStrike: true },
+      { name: 'Andre Russell', runs: 26, balls: 11, fours: 1, sixes: 3, strikeRate: '236.36', onStrike: false },
+    ],
+    currentBowler: { name: 'Imran Tahir (C)', overs: '4.0', maidens: 0, runs: 28, wickets: 2, economy: '7.00' },
+    currentOver: { overNumber: 18, balls: ['6', '1', '4', '0', '1', '6'] },
+    recentOvers: [{ overNumber: 18, balls: ['6', '1', '4', '0', '1', '6'] }],
+    scorecard: [],
+    commentary: [
+      { over: '18.0', text: 'SIX! Russell smashes it flat over mid-wicket for a colossal six!', event: 'six' },
+    ],
+    squads: { team1: [], team2: [] },
+  },
+
+  // 10. MLC: MI New York vs Texas Super Kings (Upcoming)
+  {
+    id: 'miny-vs-tsk-mlc-2026',
+    name: 'MI New York vs Texas Super Kings, Qualifier 1',
+    series: 'Major League Cricket 2026',
+    leagueId: 'mlc',
+    matchType: 'league',
+    category: 'league',
+    format: 'T20',
+    status: '📅 Upcoming · Grand Prairie Stadium, Dallas · Starts at 8:00 PM Local',
+    isLive: false,
+    isCompleted: false,
+    venue: 'Grand Prairie Stadium, Dallas, Texas',
+    date: '2026-09-06T01:00:00.000Z',
+    team1: { name: 'MI New York', shortName: 'MINY', flag: '🗽', score: null, details: 'Match starts at 8:00 PM' },
+    team2: { name: 'Texas Super Kings', shortName: 'TSK', flag: '🤠', score: null, details: 'Match starts at 8:00 PM' },
+    scorecard: [],
+    commentary: [],
+    squads: { team1: [], team2: [] },
+  },
+
+  // 11. BBL: Perth Scorchers vs Sydney Sixers (Completed)
+  {
+    id: 'perth-vs-sixers-bbl-2026',
+    name: 'Perth Scorchers vs Sydney Sixers, Final',
+    series: 'Big Bash League 2026',
+    leagueId: 'bbl',
+    matchType: 'league',
+    category: 'league',
+    format: 'T20',
+    status: '✅ Perth Scorchers won by 6 wickets',
+    isLive: false,
+    isCompleted: true,
+    venue: 'Optus Stadium, Perth',
+    date: '2026-09-03T08:00:00.000Z',
+    team1: { name: 'Perth Scorchers', shortName: 'SCO', flag: '🔥', score: '178/4 (18.4 ov)', details: 'Target: 176' },
+    team2: { name: 'Sydney Sixers', shortName: 'SIX', flag: '🌸', score: '175/8 (20.0 ov)', details: '175/8 (20.0 ov)' },
+    scorecard: [],
+    commentary: [],
+    squads: { team1: [], team2: [] },
+  },
+
+  // 12. PSL: Lahore Qalandars vs Karachi Kings (Upcoming)
+  {
+    id: 'lq-vs-kk-psl-2026',
+    name: 'Lahore Qalandars vs Karachi Kings',
+    series: 'Pakistan Super League 2026',
+    leagueId: 'psl',
+    matchType: 'league',
+    category: 'league',
+    format: 'T20',
+    status: '📅 Upcoming · Gaddafi Stadium, Lahore · Starts at 8:00 PM PKT',
+    isLive: false,
+    isCompleted: false,
+    venue: 'Gaddafi Stadium, Lahore',
+    date: '2026-09-06T15:00:00.000Z',
+    team1: { name: 'Lahore Qalandars', shortName: 'LQ', flag: '🟢', score: null, details: 'Yet to Bat' },
+    team2: { name: 'Karachi Kings', shortName: 'KK', flag: '🔵', score: null, details: 'Yet to Bat' },
+    scorecard: [],
+    commentary: [],
+    squads: { team1: [], team2: [] },
+  },
+
+  // 13. SA20: Sunrisers Eastern Cape vs MI Cape Town (Completed)
+  {
+    id: 'sec-vs-mict-sa20-2026',
+    name: 'Sunrisers Eastern Cape vs MI Cape Town',
+    series: 'SA20 2026',
+    leagueId: 'sa20',
+    matchType: 'league',
+    category: 'league',
+    format: 'T20',
+    status: '✅ Sunrisers Eastern Cape won by 14 runs',
+    isLive: false,
+    isCompleted: true,
+    venue: "St George's Park, Gqeberha",
+    date: '2026-09-04T15:30:00.000Z',
+    team1: { name: 'Sunrisers Eastern Cape', shortName: 'SEC', flag: '🟠', score: '189/6 (20.0 ov)', details: '189/6 (20.0 ov)' },
+    team2: { name: 'MI Cape Town', shortName: 'MICT', flag: '🔵', score: '175/8 (20.0 ov)', details: 'Target: 190' },
+    scorecard: [],
+    commentary: [],
+    squads: { team1: [], team2: [] },
+  },
+
+  // 14. The Hundred: Oval Invincibles vs Trent Rockets (Upcoming)
+  {
+    id: 'oi-vs-tr-hundred-2026',
+    name: 'Oval Invincibles vs Trent Rockets',
+    series: 'The Hundred 2026',
+    leagueId: 'the-hundred',
+    matchType: 'league',
+    category: 'league',
+    format: 'The Hundred (100 Balls)',
+    status: '📅 Upcoming · Kia Oval, London · Starts at 6:30 PM BST',
+    isLive: false,
+    isCompleted: false,
+    venue: 'The Kia Oval, London',
+    date: '2026-09-07T17:30:00.000Z',
+    team1: { name: 'Oval Invincibles', shortName: 'OVI', flag: '⚡', score: null, details: 'Match starts at 6:30 PM' },
+    team2: { name: 'Trent Rockets', shortName: 'TRN', flag: '🚀', score: null, details: 'Match starts at 6:30 PM' },
+    scorecard: [],
+    commentary: [],
+    squads: { team1: [], team2: [] },
+  },
 ];
 
-function filterMatches(matches, tab, type, search) {
+// Helper: Filter matches
+function filterMatches(matches, tab, type, league, search) {
   let list = [...matches];
 
+  // Tab filter: live / upcoming / recent (completed) / all
   if (tab === 'live') {
     list = list.filter((m) => m.isLive);
   } else if (tab === 'upcoming') {
@@ -409,10 +579,21 @@ function filterMatches(matches, tab, type, search) {
     list = list.filter((m) => m.isCompleted);
   }
 
+  // League / competition filter
+  if (league && league !== 'all') {
+    if (league === 'international') {
+      list = list.filter((m) => m.leagueId === 'international' || ['test', 'odi', 't20'].includes(m.matchType));
+    } else {
+      list = list.filter((m) => m.leagueId === league || m.series?.toLowerCase().includes(league.toLowerCase()));
+    }
+  }
+
+  // Format filter (test, odi, t20, league)
   if (type && type !== 'all') {
     list = list.filter((m) => m.category === type || m.matchType === type);
   }
 
+  // Search filter (team, tournament, venue, etc.)
   if (search && search.trim()) {
     const q = search.toLowerCase().trim();
     list = list.filter((m) =>
@@ -458,6 +639,8 @@ function normalizeCricApiMatch(m) {
     series: m.series || m.name || '',
     matchType: matchType,
     category: category,
+    format: category.toUpperCase(),
+    leagueId: matchType.includes('league') ? 'ipl' : 'international',
     status: m.status || (m.matchStarted ? (m.matchEnded ? 'Completed' : 'LIVE') : 'Upcoming'),
     isLive: Boolean(m.matchStarted && !m.matchEnded),
     isCompleted: Boolean(m.matchEnded),
@@ -479,35 +662,46 @@ function normalizeCricApiMatch(m) {
       score: scoreFor(teams[1]) ? `${scoreFor(teams[1]).r}/${scoreFor(teams[1]).w} (${scoreFor(teams[1]).o} ov)` : null,
       details: '',
     },
+    currentBatters: [],
+    currentBowler: null,
+    currentOver: null,
+    recentOvers: [],
     scorecard: [],
     commentary: [],
-    squads: { team1: [], team2: [] }
+    squads: { team1: [], team2: [] },
   };
 }
 
-// --- Routes ----------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// ROUTES
+// ---------------------------------------------------------------------------
 
-// Get matches for list/grid view with filters
+// 1. Get List of Leagues/Competitions
+router.get('/leagues', (req, res) => {
+  res.json(LEAGUES_REGISTRY);
+});
+
+// 2. Get All Matches (with rich tabs, leagues, formats, search)
 router.get('/all', async (req, res) => {
-  const { tab = 'all', type = 'all', search = '' } = req.query;
+  const { tab = 'all', type = 'all', league = 'all', search = '' } = req.query;
   const externalData = await fetchFromCricApi('currentMatches');
 
   let allMatches = [...MOCK_CRICKET_MATCHES];
 
   if (externalData && externalData.length > 0) {
     const fetched = externalData.map(normalizeCricApiMatch);
-    // Combine fetched with fallback list without duplication
     const fetchedIds = new Set(fetched.map((m) => String(m.id)));
     const uniqueMocks = MOCK_CRICKET_MATCHES.filter((m) => !fetchedIds.has(String(m.id)));
     allMatches = [...fetched, ...uniqueMocks];
   }
 
-  const result = filterMatches(allMatches, tab, type, search);
+  const result = filterMatches(allMatches, tab, type, league, search);
   res.json(result);
 });
 
+// 3. Live Matches Only
 router.get('/live', async (req, res) => {
-  const { type = 'all', search = '' } = req.query;
+  const { type = 'all', league = 'all', search = '' } = req.query;
   const externalData = await fetchFromCricApi('currentMatches');
   let allMatches = [...MOCK_CRICKET_MATCHES];
 
@@ -517,51 +711,34 @@ router.get('/live', async (req, res) => {
     allMatches = [...fetched, ...MOCK_CRICKET_MATCHES.filter((m) => !fetchedIds.has(String(m.id)))];
   }
 
-  const result = filterMatches(allMatches, 'live', type, search);
+  const result = filterMatches(allMatches, 'live', type, league, search);
   res.json(result);
 });
 
+// 4. Upcoming Matches
 router.get('/upcoming', async (req, res) => {
-  const { type = 'all', search = '' } = req.query;
-  const externalData = await fetchFromCricApi('currentMatches');
-  let allMatches = [...MOCK_CRICKET_MATCHES];
-
-  if (externalData && externalData.length > 0) {
-    const fetched = externalData.map(normalizeCricApiMatch);
-    const fetchedIds = new Set(fetched.map((m) => String(m.id)));
-    allMatches = [...fetched, ...MOCK_CRICKET_MATCHES.filter((m) => !fetchedIds.has(String(m.id)))];
-  }
-
-  const result = filterMatches(allMatches, 'upcoming', type, search);
+  const { type = 'all', league = 'all', search = '' } = req.query;
+  const result = filterMatches(MOCK_CRICKET_MATCHES, 'upcoming', type, league, search);
   res.json(result);
 });
 
+// 5. Recent / Completed Matches
 router.get('/recent', async (req, res) => {
-  const { type = 'all', search = '' } = req.query;
-  const externalData = await fetchFromCricApi('currentMatches');
-  let allMatches = [...MOCK_CRICKET_MATCHES];
-
-  if (externalData && externalData.length > 0) {
-    const fetched = externalData.map(normalizeCricApiMatch);
-    const fetchedIds = new Set(fetched.map((m) => String(m.id)));
-    allMatches = [...fetched, ...MOCK_CRICKET_MATCHES.filter((m) => !fetchedIds.has(String(m.id)))];
-  }
-
-  const result = filterMatches(allMatches, 'recent', type, search);
+  const { type = 'all', league = 'all', search = '' } = req.query;
+  const result = filterMatches(MOCK_CRICKET_MATCHES, 'recent', type, league, search);
   res.json(result);
 });
 
-// Single Match Detailed Endpoint (Scorecard, Info, Commentary, Squads)
+// 6. Single Match Detailed View
 router.get('/matches/:id', async (req, res) => {
   const { id } = req.params;
 
-  // Check fallback store first for instant high-detail matches (like India vs Sri Lanka Test)
   const mockMatch = MOCK_CRICKET_MATCHES.find((m) => String(m.id) === String(id));
   if (mockMatch) {
     return res.json(mockMatch);
   }
 
-  // If not found in mock, try CricAPI if key present
+  // CricAPI fallback
   if (process.env.CRICKET_API_KEY) {
     try {
       const url = `${CRICAPI_BASE}/match_scorecard?apikey=${process.env.CRICKET_API_KEY}&id=${id}`;
@@ -603,4 +780,4 @@ router.get('/matches/:id', async (req, res) => {
   return res.status(404).json({ message: 'Match details not found' });
 });
 
-module.exports = router;
+module.exports = router;

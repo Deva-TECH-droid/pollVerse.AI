@@ -1,11 +1,11 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useUser } from '@clerk/clerk-react';
-import { io } from 'socket.io-client';
+import socket from '../socket';
+import { useStreamContext } from '../context/StreamContext';
 import '../styles/GullyCricket.css';
 
 const API_URL = process.env.REACT_APP_API_URL || '';
-const SOCKET_URL = process.env.REACT_APP_SOCKET_URL || 'http://localhost:5000';
 
 const RTC_CONFIG = {
   iceServers: [
@@ -37,6 +37,19 @@ const RTC_CONFIG = {
 function LiveStreamPage() {
   const { id } = useParams();
   const { user } = useUser();
+  const {
+    activeMatchId,
+    mediaStream: persistentMediaStream,
+    isStreaming: ctxIsStreaming,
+    cameraActive: ctxCameraActive,
+    facingMode: ctxFacingMode,
+    startBroadcast,
+    stopBroadcast,
+    toggleFacingMode,
+    toggleAudioMute,
+    isAudioMuted: broadcasterAudioMuted,
+  } = useStreamContext();
+
   const [match, setMatch] = useState(null);
   const [inningsSummaries, setInningsSummaries] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -45,7 +58,7 @@ function LiveStreamPage() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [cameraActive, setCameraActive] = useState(false);
   const [remoteStreamActive, setRemoteStreamActive] = useState(false);
-  const [facingMode, setFacingMode] = useState('environment'); // Mobile Back Camera by default
+  const [facingMode, setFacingMode] = useState('environment');
   const [lastBallAlert, setLastBallAlert] = useState(null);
 
   // Chat & Prediction Poll
@@ -61,7 +74,7 @@ function LiveStreamPage() {
   const [pollQuestion, setPollQuestion] = useState('Who will hit the next SIX?');
   const [pollOptionsText, setPollOptionsText] = useState('');
 
-  // Video Refs & WebRTC
+  // Video Refs & WebRTC — kept in refs to avoid re-render dependency loops
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
   const mediaStreamRef = useRef(null);
@@ -70,9 +83,19 @@ function LiveStreamPage() {
   const viewerPcRef = useRef(null); // Viewer: single RTCPeerConnection to broadcaster
   const iceCandidateQueueRef = useRef([]);
   const chatBottomRef = useRef(null);
-  const socketRef = useRef(null);
   const videoViewportRef = useRef(null);
   const [isLargeScreen, setIsLargeScreen] = useState(false);
+  const [isAudioMuted, setIsAudioMuted] = useState(true);
+
+  // Sequence counter ref for dedup of score updates
+  const lastSeqRef = useRef(0);
+
+  // Track whether component is still mounted
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   // Determine if current logged-in user is the match creator
   const isCreator = Boolean(
@@ -82,189 +105,228 @@ function LiveStreamPage() {
     )
   );
 
-  // Fetch Match Details
-  const fetchMatchDetails = useCallback(async () => {
-    try {
-      const res = await fetch(`${API_URL}/api/gully-cricket/matches/${id}`);
-      if (!res.ok) throw new Error('Match not found');
-      const data = await res.json();
-      const m = data.match;
-      setMatch(m);
-      setInningsSummaries(data.innings || []);
-      setIsStreaming(Boolean(m.isLiveStreaming));
-      if (m.chatMessages) setChatMessages(m.chatMessages);
-      if (m.activeMicroPoll) {
-        setActiveMicroPoll(m.activeMicroPoll);
-      } else if (m.teamA?.players && m.teamB?.players) {
-        setPollOptionsText(`${m.teamA.players[0] || 'Player 1'}, ${m.teamA.players[1] || 'Player 2'}, ${m.teamB.players[0] || 'Player 3'}`);
-      }
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }, [id]);
-
-  // Clean up all WebRTC connections
-  const cleanupWebRTC = useCallback(() => {
-    peerConnectionsRef.current.forEach((pc) => {
-      try { pc.close(); } catch (e) { }
-    });
-    peerConnectionsRef.current.clear();
-
-    if (viewerPcRef.current) {
-      try { viewerPcRef.current.close(); } catch (e) { }
-      viewerPcRef.current = null;
-    }
-    remoteMediaStreamRef.current = null;
-    iceCandidateQueueRef.current = [];
-  }, []);
-
-  const stopCamera = useCallback(() => {
-    if (mediaStreamRef.current) {
-      mediaStreamRef.current.getTracks().forEach((track) => track.stop());
-      mediaStreamRef.current = null;
-    }
-    setCameraActive(false);
-    cleanupWebRTC();
-    if (socketRef.current) {
-      socketRef.current.emit('streamStopped', { matchId: id });
-    }
-  }, [cleanupWebRTC, id]);
-
-  // Helper: Broadcaster creates and sends WebRTC offer to a specific viewer
-  const sendOfferToViewer = useCallback(async (socket, viewerSocketId) => {
-    try {
-      console.log(`🎥 Broadcaster creating offer for viewer ${viewerSocketId}`);
-      // Close stale connection for this viewer if any
-      const existingPc = peerConnectionsRef.current.get(viewerSocketId);
-      if (existingPc) { try { existingPc.close(); } catch (e) { } }
-
-      const pc = new RTCPeerConnection(RTC_CONFIG);
-      peerConnectionsRef.current.set(viewerSocketId, pc);
-
-      mediaStreamRef.current.getTracks().forEach((track) => {
-        pc.addTrack(track, mediaStreamRef.current);
-      });
-
-      pc.onicecandidate = (event) => {
-        if (event.candidate) {
-          socket.emit('streamIceCandidate', {
-            targetSocketId: viewerSocketId,
-            candidate: event.candidate,
-          });
-        }
-      };
-
-      pc.onconnectionstatechange = () => {
-        console.log(`WebRTC → viewer ${viewerSocketId}: ${pc.connectionState}`);
-      };
-
-      const offer = await pc.createOffer({ offerToReceiveAudio: false, offerToReceiveVideo: false });
-      await pc.setLocalDescription(offer);
-
-      socket.emit('streamOffer', {
-        matchId: id,
-        targetSocketId: viewerSocketId,
-        offer,
-      });
-    } catch (err) {
-      console.error('Error creating offer for viewer:', err);
-    }
-  }, [id]);
-
-  // WebRTC & Socket Connection
+  // ── Fetch Match Details ─────────────────────────────────────────────
   useEffect(() => {
+    let cancelled = false;
+    const fetchMatchDetails = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/gully-cricket/matches/${id}`);
+        if (!res.ok) throw new Error('Match not found');
+        const data = await res.json();
+        if (cancelled) return;
+        const m = data.match;
+        setMatch(m);
+        setInningsSummaries(data.innings || []);
+        setIsStreaming(Boolean(m.isLiveStreaming));
+        if (m.chatMessages) setChatMessages(m.chatMessages);
+        if (m.activeMicroPoll) {
+          setActiveMicroPoll(m.activeMicroPoll);
+        } else if (m.teamA?.players && m.teamB?.players) {
+          setPollOptionsText(`${m.teamA.players[0] || 'Player 1'}, ${m.teamA.players[1] || 'Player 2'}, ${m.teamB.players[0] || 'Player 3'}`);
+        }
+      } catch (err) {
+        if (!cancelled) setError(err.message);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
     fetchMatchDetails();
+    return () => { cancelled = true; };
+  }, [id]);
 
-    const socket = io(SOCKET_URL, {
-      transports: ['websocket', 'polling'],
-      reconnection: true,
-      reconnectionAttempts: Infinity,
-      reconnectionDelay: 500,
-      reconnectionDelayMax: 2000,
-    });
-    socketRef.current = socket;
-
+  // ── Socket.io event handlers ────────────────────────────────────────
+  // Stable — only depends on `id` which never changes during the page lifecycle
+  useEffect(() => {
     const joinRooms = () => {
       socket.emit('joinMatchViewer', { matchId: id });
       socket.emit('streamViewerJoin', { matchId: id });
     };
+
     joinRooms();
 
     // Re-join rooms on reconnect so score updates resume immediately
-    socket.on('connect', () => {
+    const onConnect = () => {
       console.log('🔗 Socket reconnected — rejoining match rooms');
       joinRooms();
-    });
+    };
+    socket.on('connect', onConnect);
 
     // 1. Spectator count
-    socket.on('viewerCountUpdate', ({ matchId, count }) => {
+    const onViewerCount = ({ matchId, count }) => {
       if (String(matchId) === String(id)) {
         setSpectatorCount(count || 1);
       }
-    });
+    };
+    socket.on('viewerCountUpdate', onViewerCount);
 
-    // 2. Real-Time Score Updates (Instantly reflected across all viewers)
-    socket.on('matchScoreUpdate', ({ matchId, match: updatedMatch, innings: updatedInnings, latestBall }) => {
-      if (String(matchId) === String(id) || String(updatedMatch?._id) === String(id)) {
-        setMatch(updatedMatch);
-        setInningsSummaries(updatedInnings || []);
-        if (latestBall) {
-          let alertText = '';
-          if (latestBall.isWicket) alertText = '🔴 WICKET!';
-          else if (latestBall.runs === 6) alertText = '🚀 SIX! (6 Runs)';
-          else if (latestBall.runs === 4) alertText = '🔥 FOUR! (4 Runs)';
-          else if (latestBall.extraType === 'wide') alertText = '⚡ WIDE BALL';
-          else if (latestBall.extraType === 'noball') alertText = '⚡ NO BALL';
+    // 2. Real-Time Score Updates with sequence-based dedup
+    const onScoreUpdate = ({ matchId, match: updatedMatch, innings: updatedInnings, latestBall, seq }) => {
+      if (String(matchId) !== String(id) && String(updatedMatch?._id) !== String(id)) return;
+      // Discard stale / out-of-order updates
+      if (seq !== undefined && seq <= lastSeqRef.current) return;
+      if (seq !== undefined) lastSeqRef.current = seq;
 
-          if (alertText) {
-            setLastBallAlert(alertText);
-            setTimeout(() => setLastBallAlert(null), 3500);
-          }
+      setMatch(updatedMatch);
+      setInningsSummaries(updatedInnings || []);
+      if (latestBall) {
+        let alertText = '';
+        if (latestBall.isWicket) alertText = '🔴 WICKET!';
+        else if (latestBall.runs === 6) alertText = '🚀 SIX! (6 Runs)';
+        else if (latestBall.runs === 4) alertText = '🔥 FOUR! (4 Runs)';
+        else if (latestBall.extraType === 'wide') alertText = '⚡ WIDE BALL';
+        else if (latestBall.extraType === 'noball') alertText = '⚡ NO BALL';
+
+        if (alertText) {
+          setLastBallAlert(alertText);
+          setTimeout(() => setLastBallAlert(null), 3500);
         }
       }
-    });
+    };
+    socket.on('matchScoreUpdate', onScoreUpdate);
 
     // 3. Stream Status Update
-    socket.on('matchStreamUpdate', ({ matchId, isLiveStreaming }) => {
-      if (String(matchId) === String(id)) {
-        setIsStreaming(isLiveStreaming);
-        if (!isLiveStreaming) {
-          setRemoteStreamActive(false);
-          remoteMediaStreamRef.current = null;
-          if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
-        } else {
-          socket.emit('streamViewerJoin', { matchId: id });
-        }
+    const onStreamUpdate = ({ matchId, isLiveStreaming }) => {
+      if (String(matchId) !== String(id)) return;
+      setIsStreaming(isLiveStreaming);
+      if (!isLiveStreaming) {
+        setRemoteStreamActive(false);
+        remoteMediaStreamRef.current = null;
+        if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
+      } else {
+        // Stream just started — request to join as viewer
+        socket.emit('streamViewerJoin', { matchId: id });
       }
-    });
+    };
+    socket.on('matchStreamUpdate', onStreamUpdate);
 
+    // 8. Broadcaster is ready event
+    const onBroadcasterReady = () => {
+      socket.emit('streamViewerJoin', { matchId: id });
+    };
+    socket.on('streamBroadcasterReady', onBroadcasterReady);
+
+    // 9. Stream ended
+    const onStreamEnded = () => {
+      setRemoteStreamActive(false);
+      setIsStreaming(false);
+      remoteMediaStreamRef.current = null;
+      if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
+    };
+    socket.on('streamEnded', onStreamEnded);
+
+    // 10. Chat & Poll updates
+    const onChatMsg = ({ matchId, message }) => {
+      if (String(matchId) === String(id)) {
+        setChatMessages((prev) => [...prev, message]);
+      }
+    };
+    socket.on('newMatchChatMessage', onChatMsg);
+
+    const onNewPoll = ({ matchId, microPoll }) => {
+      if (String(matchId) === String(id)) {
+        setActiveMicroPoll(microPoll);
+        setVotedOptionId(null);
+      }
+    };
+    socket.on('newMicroPoll', onNewPoll);
+
+    const onPollUpdated = ({ matchId, microPoll }) => {
+      if (String(matchId) === String(id)) {
+        setActiveMicroPoll(microPoll);
+      }
+    };
+    socket.on('microPollUpdated', onPollUpdated);
+
+    return () => {
+      socket.emit('leaveMatchViewer');
+      socket.off('connect', onConnect);
+      socket.off('viewerCountUpdate', onViewerCount);
+      socket.off('matchScoreUpdate', onScoreUpdate);
+      socket.off('matchStreamUpdate', onStreamUpdate);
+      socket.off('streamBroadcasterReady', onBroadcasterReady);
+      socket.off('streamEnded', onStreamEnded);
+      socket.off('newMatchChatMessage', onChatMsg);
+      socket.off('newMicroPoll', onNewPoll);
+      socket.off('microPollUpdated', onPollUpdated);
+    };
+  }, [id]);
+
+  // ── WebRTC Signaling (separate effect, stable deps) ─────────────────
+  useEffect(() => {
     // 4. WebRTC: Broadcaster receives notification of new viewer
-    socket.on('streamViewerJoined', async ({ viewerSocketId }) => {
+    const onViewerJoined = async ({ viewerSocketId }) => {
       if (!viewerSocketId) return;
 
-      // If media isn't ready yet (broadcaster still loading camera), wait up to 5s
-      if (!mediaStreamRef.current) {
-        let retries = 0;
-        const waitForStream = setInterval(async () => {
-          retries++;
-          if (mediaStreamRef.current) {
-            clearInterval(waitForStream);
-            await sendOfferToViewer(socket, viewerSocketId);
-          } else if (retries >= 5) {
-            clearInterval(waitForStream);
-            console.warn('⚠️ Broadcaster stream not ready after 5s for viewer:', viewerSocketId);
-          }
-        }, 1000);
+      // Wait for media stream to be ready before creating offer
+      const waitForStream = () => {
+        return new Promise((resolve) => {
+          if (mediaStreamRef.current) return resolve(true);
+          let retries = 0;
+          const timer = setInterval(() => {
+            retries++;
+            if (mediaStreamRef.current) {
+              clearInterval(timer);
+              resolve(true);
+            } else if (retries >= 10) {
+              clearInterval(timer);
+              resolve(false);
+            }
+          }, 500);
+        });
+      };
+
+      const ready = await waitForStream();
+      if (!ready || !mountedRef.current) {
+        console.warn('⚠️ Broadcaster stream not ready for viewer:', viewerSocketId);
         return;
       }
 
-      await sendOfferToViewer(socket, viewerSocketId);
-    });
+      try {
+        console.log(`🎥 Broadcaster creating offer for viewer ${viewerSocketId}`);
+        // Close stale connection for this viewer if any
+        const existingPc = peerConnectionsRef.current.get(viewerSocketId);
+        if (existingPc) { try { existingPc.close(); } catch (e) { } }
+
+        const pc = new RTCPeerConnection(RTC_CONFIG);
+        peerConnectionsRef.current.set(viewerSocketId, pc);
+
+        mediaStreamRef.current.getTracks().forEach((track) => {
+          pc.addTrack(track, mediaStreamRef.current);
+        });
+
+        pc.onicecandidate = (event) => {
+          if (event.candidate) {
+            socket.emit('streamIceCandidate', {
+              targetSocketId: viewerSocketId,
+              candidate: event.candidate,
+            });
+          }
+        };
+
+        pc.onconnectionstatechange = () => {
+          console.log(`WebRTC → viewer ${viewerSocketId}: ${pc.connectionState}`);
+          if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
+            try { pc.close(); } catch (e) { }
+            peerConnectionsRef.current.delete(viewerSocketId);
+          }
+        };
+
+        const offer = await pc.createOffer({ offerToReceiveAudio: false, offerToReceiveVideo: false });
+        await pc.setLocalDescription(offer);
+
+        socket.emit('streamOffer', {
+          matchId: id,
+          targetSocketId: viewerSocketId,
+          offer,
+        });
+      } catch (err) {
+        console.error('Error creating offer for viewer:', err);
+      }
+    };
+    socket.on('streamViewerJoined', onViewerJoined);
 
     // 5. WebRTC: Broadcaster receives answer from viewer
-    socket.on('streamAnswer', async ({ viewerSocketId, answer }) => {
+    const onStreamAnswer = async ({ viewerSocketId, answer }) => {
       const pc = peerConnectionsRef.current.get(viewerSocketId);
       if (pc && answer) {
         try {
@@ -273,10 +335,11 @@ function LiveStreamPage() {
           console.error('Error setting remote description from answer:', err);
         }
       }
-    });
+    };
+    socket.on('streamAnswer', onStreamAnswer);
 
     // 6. WebRTC: Viewer receives offer from broadcaster
-    socket.on('streamOffer', async ({ broadcasterSocketId, offer }) => {
+    const onStreamOffer = async ({ broadcasterSocketId, offer }) => {
       try {
         console.log('🎥 Viewer received stream offer from broadcaster');
         if (viewerPcRef.current) {
@@ -292,8 +355,10 @@ function LiveStreamPage() {
           if (event.streams && event.streams[0]) {
             const stream = event.streams[0];
             remoteMediaStreamRef.current = stream;
-            setRemoteStreamActive(true);
-            setIsStreaming(true);
+            if (mountedRef.current) {
+              setRemoteStreamActive(true);
+              setIsStreaming(true);
+            }
             if (remoteVideoRef.current) {
               remoteVideoRef.current.srcObject = stream;
               remoteVideoRef.current.play().catch((e) => console.log('Autoplay:', e));
@@ -307,6 +372,22 @@ function LiveStreamPage() {
               targetSocketId: broadcasterSocketId,
               candidate: event.candidate,
             });
+          }
+        };
+
+        // Auto-reconnect on connection failure
+        pc.onconnectionstatechange = () => {
+          console.log(`WebRTC viewer state: ${pc.connectionState}`);
+          if (pc.connectionState === 'failed') {
+            console.log('🔄 Viewer connection failed — requesting re-stream');
+            try { pc.close(); } catch (e) { }
+            viewerPcRef.current = null;
+            // Re-request stream after a short delay
+            setTimeout(() => {
+              if (mountedRef.current) {
+                socket.emit('streamViewerJoin', { matchId: id });
+              }
+            }, 1500);
           }
         };
 
@@ -331,10 +412,11 @@ function LiveStreamPage() {
       } catch (err) {
         console.error('Error handling stream offer:', err);
       }
-    });
+    };
+    socket.on('streamOffer', onStreamOffer);
 
     // 7. WebRTC: ICE Candidate exchange
-    socket.on('streamIceCandidate', async ({ fromSocketId, candidate }) => {
+    const onIceCandidate = async ({ fromSocketId, candidate }) => {
       if (!candidate) return;
       try {
         const pcBroadcaster = peerConnectionsRef.current.get(fromSocketId);
@@ -355,70 +437,70 @@ function LiveStreamPage() {
       } catch (err) {
         console.error('Error adding ICE candidate:', err);
       }
-    });
-
-    // 8. Broadcaster is ready event
-    socket.on('streamBroadcasterReady', () => {
-      socket.emit('streamViewerJoin', { matchId: id });
-    });
-
-    // 9. Stream ended
-    socket.on('streamEnded', () => {
-      setRemoteStreamActive(false);
-      setIsStreaming(false);
-      remoteMediaStreamRef.current = null;
-      if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
-    });
-
-    // 10. Chat & Poll updates
-    socket.on('newMatchChatMessage', ({ matchId, message }) => {
-      if (String(matchId) === String(id)) {
-        setChatMessages((prev) => [...prev, message]);
-      }
-    });
-
-    socket.on('newMicroPoll', ({ matchId, microPoll }) => {
-      if (String(matchId) === String(id)) {
-        setActiveMicroPoll(microPoll);
-        setVotedOptionId(null);
-      }
-    });
-
-    socket.on('microPollUpdated', ({ matchId, microPoll }) => {
-      if (String(matchId) === String(id)) {
-        setActiveMicroPoll(microPoll);
-      }
-    });
-
-    return () => {
-      socket.emit('leaveMatchViewer');
-      socket.disconnect();
-      stopCamera();
-      cleanupWebRTC();
     };
-  }, [
-    id,
-    fetchMatchDetails,
-    cleanupWebRTC,
-    stopCamera,
-    sendOfferToViewer
-  ]);
+    socket.on('streamIceCandidate', onIceCandidate);
 
+    const pcs = peerConnectionsRef.current;
+
+    // Cleanup: only close WebRTC on full unmount
+    return () => {
+      socket.off('streamViewerJoined', onViewerJoined);
+      socket.off('streamAnswer', onStreamAnswer);
+      socket.off('streamOffer', onStreamOffer);
+      socket.off('streamIceCandidate', onIceCandidate);
+
+      // Close all broadcaster peer connections
+      pcs.forEach((pc) => {
+        try { pc.close(); } catch (e) { }
+      });
+      pcs.clear();
+
+      // Close viewer peer connection
+      if (viewerPcRef.current) {
+        try { viewerPcRef.current.close(); } catch (e) { }
+        viewerPcRef.current = null;
+      }
+
+      // Stop camera if active
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+        mediaStreamRef.current = null;
+      }
+      socket.emit('streamStopped', { matchId: id });
+    };
+  }, [id]);
+
+  const isBroadcastingThisMatch = Boolean(
+    ctxCameraActive && activeMatchId === id && persistentMediaStream
+  );
+  const effectiveCameraActive = isCreator ? isBroadcastingThisMatch : cameraActive;
+  const effectiveIsStreaming = isCreator ? Boolean((ctxIsStreaming && activeMatchId === id) || isStreaming) : isStreaming;
+
+  // Cleanup on unmount — only close viewer WebRTC, keep persistent broadcaster alive!
+  useEffect(() => {
+    return () => {
+      if (viewerPcRef.current) {
+        try { viewerPcRef.current.close(); } catch (e) { }
+        viewerPcRef.current = null;
+      }
+      // Do NOT kill persistentMediaStream or broadcaster connections on page switch!
+    };
+  }, []);
+
+  // Auto-scroll chat
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages]);
 
-  const [isAudioMuted, setIsAudioMuted] = useState(true);
-
-  // Attach local camera stream whenever cameraActive turns true
+  // Attach local camera stream whenever broadcaster stream is active
   useEffect(() => {
-    if (cameraActive && mediaStreamRef.current && localVideoRef.current) {
-      localVideoRef.current.srcObject = mediaStreamRef.current;
+    if (isCreator && isBroadcastingThisMatch && persistentMediaStream && localVideoRef.current) {
+      localVideoRef.current.srcObject = persistentMediaStream;
       localVideoRef.current.play().catch((err) => {
         console.warn('Local video auto-play error:', err.message);
       });
     }
-  }, [cameraActive]);
+  }, [isCreator, isBroadcastingThisMatch, persistentMediaStream]);
 
   // Attach remote stream whenever remoteStreamActive turns true
   useEffect(() => {
@@ -430,65 +512,38 @@ function LiveStreamPage() {
     }
   }, [remoteStreamActive]);
 
-  // Start Camera Capture for Creator (Mobile Back Camera or Laptop Webcam)
-  const startCamera = async (desiredFacingMode = facingMode) => {
-    stopCamera();
-    try {
-      let stream;
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: desiredFacingMode },
-          audio: true,
-        });
-      } catch (e1) {
-        try {
-          stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: desiredFacingMode },
-            audio: false,
-          });
-        } catch (e2) {
-          stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-        }
-      }
-
-      mediaStreamRef.current = stream;
-      setFacingMode(desiredFacingMode);
-      setCameraActive(true);
-      await toggleStream(true);
-
-      // Register as broadcaster on socket and notify viewers
-      if (socketRef.current) {
-        socketRef.current.emit('streamBroadcasterJoin', { matchId: id });
-      }
-    } catch (err) {
-      alert('Camera access error: ' + err.message + '\n\nPlease ensure camera permissions are allowed in your browser URL bar.');
-      await toggleStream(true);
-    }
-  };
-
-  const switchCameraMode = async () => {
-    const nextMode = facingMode === 'environment' ? 'user' : 'environment';
-    await startCamera(nextMode);
-  };
+  // ── Camera Capture (Creator) via StreamContext ──────────────────────
+  const stopCamera = useCallback(async () => {
+    await stopBroadcast(id);
+    setCameraActive(false);
+    setIsStreaming(false);
+  }, [id, stopBroadcast]);
 
   // Toggle Stream status on backend
-  const toggleStream = async (status) => {
-    try {
-      const res = await fetch(`${API_URL}/api/gully-cricket/matches/${id}/stream`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isLiveStreaming: status }),
-      });
-      if (res.ok) {
-        setIsStreaming(status);
-        if (!status) stopCamera();
-      }
-    } catch (err) {
-      console.error('Failed to toggle stream:', err);
+  const toggleStream = useCallback(async (status) => {
+    if (!status) {
+      await stopCamera();
+    } else {
+      await startBroadcast(id, ctxFacingMode || facingMode);
     }
-  };
+  }, [id, stopCamera, startBroadcast, ctxFacingMode, facingMode]);
 
-  // Send Chat Message
+  const startCamera = useCallback(async (desiredFacingMode = 'environment') => {
+    try {
+      await startBroadcast(id, desiredFacingMode);
+      setFacingMode(desiredFacingMode);
+      setCameraActive(true);
+      setIsStreaming(true);
+    } catch (err) {
+      alert('Camera access error: ' + err.message + '\n\nPlease ensure camera permissions are allowed in your browser URL bar.');
+    }
+  }, [id, startBroadcast]);
+
+  const switchCameraMode = useCallback(async () => {
+    await toggleFacingMode();
+  }, [toggleFacingMode]);
+
+  // ── Chat ────────────────────────────────────────────────────────────
   const handleSendChat = async (e, reactionEmoji = '') => {
     if (e) e.preventDefault();
     if (!chatInput.trim() && !reactionEmoji) return;
@@ -511,7 +566,7 @@ function LiveStreamPage() {
     }
   };
 
-  // Vote on Micro-Poll Prediction
+  // ── Micro-Poll ──────────────────────────────────────────────────────
   const handleVoteMicroPoll = async (optionId) => {
     if (votedOptionId !== null) return;
     try {
@@ -528,7 +583,6 @@ function LiveStreamPage() {
     }
   };
 
-  // Create Micro-Poll Prediction (Creator)
   const handleCreateMicroPoll = async (e) => {
     e.preventDefault();
     const optionsArray = pollOptionsText.split(',').map((s) => s.trim()).filter(Boolean);
@@ -563,6 +617,7 @@ function LiveStreamPage() {
     }
   };
 
+  // ── Render ──────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="gc-container">
@@ -638,6 +693,9 @@ function LiveStreamPage() {
         <div className="gc-live-stream-badge">
           <span className="gc-pulse-red"></span> 🔴 LIVE STREAM
         </div>
+        <Link to={`/gully-cricket/match/${id}/bigscreen`} className="gc-bigscreen-link" title="Open Big Screen Scoreboard">
+          📺 Big Screen
+        </Link>
       </div>
 
       {/* Main Video & Score Overlay Section */}
@@ -645,7 +703,7 @@ function LiveStreamPage() {
         {/* Video Screen */}
         <div ref={videoViewportRef} className={`gc-video-viewport ${isLargeScreen ? 'is-large-viewport' : ''}`}>
           {/* Creator's Local Video Camera Feed */}
-          {cameraActive ? (
+          {effectiveCameraActive ? (
             <video ref={localVideoRef} autoPlay playsInline muted className="gc-camera-feed" />
           ) : remoteStreamActive ? (
             /* Viewer's WebRTC Stream received from Creator */
@@ -778,7 +836,7 @@ function LiveStreamPage() {
         {/* Creator Control Strip (Visible to Match Creator Only) */}
         {isCreator && (
           <div className="gc-stream-control-strip">
-            {isStreaming ? (
+            {effectiveIsStreaming ? (
               <button className="gc-ctrl-btn gc-ctrl-stop" onClick={() => toggleStream(false)}>
                 ⏹️ Stop Live Stream
               </button>
@@ -788,10 +846,15 @@ function LiveStreamPage() {
               </button>
             )}
 
-            {cameraActive && (
-              <button className="gc-ctrl-btn gc-ctrl-flip" onClick={switchCameraMode}>
-                🔄 Flip Cam ({facingMode === 'environment' ? 'Back 📷' : 'Front 👤'})
-              </button>
+            {effectiveCameraActive && (
+              <>
+                <button className="gc-ctrl-btn gc-ctrl-flip" onClick={switchCameraMode}>
+                  🔄 Flip Cam ({facingMode === 'environment' ? 'Back 📷' : 'Front 👤'})
+                </button>
+                <button className="gc-ctrl-btn gc-ctrl-flip" onClick={toggleAudioMute}>
+                  {broadcasterAudioMuted ? '🎙️ Unmute Mic' : '🔇 Mute Mic'}
+                </button>
+              </>
             )}
 
             <button className="gc-ctrl-btn gc-ctrl-poll" onClick={() => setShowPollModal(true)}>

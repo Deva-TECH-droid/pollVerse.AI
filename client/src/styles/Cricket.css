@@ -976,4 +976,382 @@
   background: rgba(239, 68, 68, 0.1);
   border: 1px solid rgba(239, 68, 68, 0.3);
   border-radius: 12px;
-}
+}
+
+/* ==========================================================================
+   CRICBUZZ-STYLE LEAGUES, BALL-BY-BALL & LIVE HUB STYLES
+   ========================================================================== */
+
+/* Leagues Carousel */
+.ck-leagues-carousel {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 8px;
+  margin-bottom: 16px;
+}
+
+.ck-league-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border, #2d2d38);
+  color: var(--text-secondary, #d1d5db);
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.ck-league-pill:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.ck-league-pill.active {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #052e10;
+  border-color: #10b981;
+  box-shadow: 0 0 16px rgba(16, 185, 129, 0.35);
+}
+
+/* Live Micro-Box on Match Card */
+.ck-live-micro-box {
+  background: rgba(16, 185, 129, 0.04);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 14px;
+}
+
+.ck-live-rates-bar {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 0.78rem;
+  color: var(--text-muted, #9ca3af);
+  margin-bottom: 10px;
+}
+
+.ck-rate-item strong {
+  color: #fff;
+}
+
+.ck-rate-item.target strong {
+  color: #fbbf24;
+}
+
+.ck-onpitch-batters {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.ck-onpitch-player {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.82rem;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.ck-onpitch-player.on-strike {
+  background: rgba(16, 185, 129, 0.12);
+  border-left: 3px solid #10b981;
+  color: #fff;
+}
+
+.ck-player-title {
+  font-weight: 700;
+}
+
+.ck-player-digits {
+  font-weight: 800;
+  color: #10b981;
+}
+
+.ck-onpitch-bowler {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 6px;
+  margin-bottom: 10px;
+}
+
+.ck-bowler-label {
+  color: var(--text-muted, #9ca3af);
+}
+
+.ck-bowler-name {
+  font-weight: 700;
+  color: var(--text-primary, #fff);
+}
+
+.ck-bowler-figures {
+  margin-left: auto;
+  font-weight: 800;
+  color: #38bdf8;
+}
+
+/* Ball by Ball Delivery Strip */
+.ck-ballbyball-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 6px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.1);
+}
+
+.ck-bbb-over-label {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--text-muted, #9ca3af);
+  white-space: nowrap;
+}
+
+.ck-bbb-balls {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.ck-delivery-chip {
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 0.72rem;
+  font-weight: 800;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.ck-delivery-chip.ball-dot {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-muted, #9ca3af);
+}
+
+.ck-delivery-chip.ball-four {
+  background: rgba(59, 130, 246, 0.25);
+  border-color: #3b82f6;
+  color: #93c5fd;
+}
+
+.ck-delivery-chip.ball-six {
+  background: linear-gradient(135deg, rgba(234, 179, 8, 0.3), rgba(245, 158, 11, 0.2));
+  border-color: #eab308;
+  color: #fef08a;
+  box-shadow: 0 0 8px rgba(234, 179, 8, 0.4);
+}
+
+.ck-delivery-chip.ball-wicket {
+  background: rgba(239, 68, 68, 0.3);
+  border-color: #ef4444;
+  color: #fca5a5;
+}
+
+/* Detailed Match Page Live Experience Card */
+.ck-live-experience-card {
+  background: linear-gradient(160deg, #181c24, #0f1218);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 18px;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.ck-live-exp-header {
+  margin-bottom: 16px;
+}
+
+.ck-exp-rates {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.ck-exp-badge {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  color: var(--text-secondary, #d1d5db);
+}
+
+.ck-exp-badge strong {
+  color: #10b981;
+}
+
+.ck-exp-badge.target strong {
+  color: #f59e0b;
+}
+
+.ck-onpitch-detail-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.ck-col-heading {
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: #10b981;
+  margin-bottom: 10px;
+}
+
+.ck-mini-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.ck-mini-table th {
+  text-align: left;
+  padding: 6px 8px;
+  color: var(--text-muted, #9ca3af);
+  font-size: 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.ck-mini-table td {
+  padding: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.ck-mini-table .row-onstrike {
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.strike-marker {
+  color: #10b981;
+  margin-left: 4px;
+}
+
+/* Bowler Card Box */
+.ck-bowler-card-box {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.ck-bowler-name-title {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #fff;
+  margin-bottom: 12px;
+}
+
+.ck-bowler-stat-row {
+  display: flex;
+  justify-content: space-between;
+}
+
+.ck-bowler-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.ck-bowler-stat .stat-num {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #fff;
+}
+
+.ck-bowler-stat .stat-label {
+  font-size: 0.72rem;
+  color: var(--text-muted, #9ca3af);
+  margin-top: 2px;
+}
+
+/* Ball by Ball Detailed Section */
+.ck-ballbyball-detailed-section {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.ck-over-deliveries-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.ck-over-tag {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: #38bdf8;
+  white-space: nowrap;
+}
+
+.ck-delivery-chips-group {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.ck-recent-overs-history {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.ck-recent-over-subrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ck-subover-tag {
+  font-size: 0.78rem;
+  color: var(--text-muted, #9ca3af);
+  white-space: nowrap;
+  min-width: 60px;
+}
+
+/* Responsive Breakpoints for Cricket */
+@media (max-width: 768px) {
+  .ck-onpitch-detail-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .ck-score-summary-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .ck-vs-badge {
+    margin: 4px auto;
+  }
+
+  .ck-detail-hero {
+    padding: 20px 16px;
+  }
+
+  .ck-live-experience-card {
+    padding: 16px 12px;
+  }
+}
+

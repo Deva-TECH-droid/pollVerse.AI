@@ -22,6 +22,16 @@ function WinPredictorBar({ probability, team1Name, team2Name, team1Flag, team2Fl
   );
 }
 
+function BallChip({ outcome }) {
+  let extraClass = '';
+  if (outcome === 'W') extraClass = 'ball-wicket';
+  else if (outcome === '4' || outcome === 4) extraClass = 'ball-four';
+  else if (outcome === '6' || outcome === 6) extraClass = 'ball-six';
+  else if (outcome === '0' || outcome === 0) extraClass = 'ball-dot';
+
+  return <span className={`ck-delivery-chip ${extraClass}`}>{outcome}</span>;
+}
+
 function ScorecardInnings({ inning }) {
   return (
     <div className="ck-innings-block">
@@ -108,7 +118,7 @@ function CricketMatchDetailPage() {
   const [match, setMatch] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [tab, setTab] = useState('scorecard');
+  const [tab, setTab] = useState('live');
   const [selectedInningIdx, setSelectedInningIdx] = useState(0);
   const [commFilter, setCommFilter] = useState('all'); // all, wickets, boundaries
 
@@ -130,7 +140,7 @@ function CricketMatchDetailPage() {
     };
 
     fetchMatch();
-    const interval = setInterval(fetchMatch, 25000);
+    const interval = setInterval(fetchMatch, 15000);
     return () => clearInterval(interval);
   }, [id]);
 
@@ -139,7 +149,7 @@ function CricketMatchDetailPage() {
       <div className="ck-container">
         <div className="ck-loading-box">
           <div className="ck-spinner"></div>
-          <p className="ck-empty">Loading match details & scorecard...</p>
+          <p className="ck-empty">Loading Cricbuzz live match scorecard & ball-by-ball...</p>
         </div>
       </div>
     );
@@ -170,6 +180,7 @@ function CricketMatchDetailPage() {
       <div className="ck-detail-hero">
         <div className="ck-hero-meta">
           <span className="ck-hero-series">{match.series}</span>
+          {match.format && <span className="ck-card-type-badge">{match.format}</span>}
           {match.isLive ? (
             <span className="ck-live-badge"><span className="ck-pulse-dot"></span> 🔴 LIVE</span>
           ) : (
@@ -209,10 +220,123 @@ function CricketMatchDetailPage() {
         </div>
       </div>
 
+      {/* 🔴 Cricbuzz Live Match Experience Component (Batters, Bowlers, Ball-by-Ball) */}
+      {match.isLive && (
+        <div className="ck-live-experience-card">
+          <div className="ck-live-exp-header">
+            <div className="ck-exp-rates">
+              {match.crr && <span className="ck-exp-badge">CRR: <strong>{match.crr}</strong></span>}
+              {match.rrr && <span className="ck-exp-badge">RRR: <strong>{match.rrr}</strong></span>}
+              {match.target && <span className="ck-exp-badge target">Target: <strong>{match.target}</strong></span>}
+            </div>
+          </div>
+
+          {/* Current On-Field Batters & Bowler Statistics Grid */}
+          <div className="ck-onpitch-detail-grid">
+            {/* Batters */}
+            <div className="ck-batters-detail-col">
+              <h4 className="ck-col-heading">🏏 CURRENT BATTERS</h4>
+              <div className="ck-batters-table-wrap">
+                <table className="ck-mini-table">
+                  <thead>
+                    <tr>
+                      <th>Batter</th>
+                      <th className="ck-num">R</th>
+                      <th className="ck-num">B</th>
+                      <th className="ck-num">4s</th>
+                      <th className="ck-num">6s</th>
+                      <th className="ck-num">SR</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(match.currentBatters || []).map((b, i) => (
+                      <tr key={i} className={b.onStrike ? 'row-onstrike' : ''}>
+                        <td className="batter-name-cell">
+                          <strong>{b.name}</strong> {b.onStrike && <span className="strike-marker">★</span>}
+                        </td>
+                        <td className="ck-num highlight-runs">{b.runs}</td>
+                        <td className="ck-num">{b.balls}</td>
+                        <td className="ck-num">{b.fours || 0}</td>
+                        <td className="ck-num">{b.sixes || 0}</td>
+                        <td className="ck-num">{b.strikeRate || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Bowler */}
+            {match.currentBowler && (
+              <div className="ck-bowler-detail-col">
+                <h4 className="ck-col-heading">⚾ CURRENT BOWLER</h4>
+                <div className="ck-bowler-card-box">
+                  <div className="ck-bowler-name-title">{match.currentBowler.name}</div>
+                  <div className="ck-bowler-stat-row">
+                    <div className="ck-bowler-stat">
+                      <span className="stat-num">{match.currentBowler.overs}</span>
+                      <span className="stat-label">Overs</span>
+                    </div>
+                    <div className="ck-bowler-stat">
+                      <span className="stat-num">{match.currentBowler.maidens}</span>
+                      <span className="stat-label">Maidens</span>
+                    </div>
+                    <div className="ck-bowler-stat">
+                      <span className="stat-num">{match.currentBowler.runs}</span>
+                      <span className="stat-label">Runs</span>
+                    </div>
+                    <div className="ck-bowler-stat">
+                      <span className="stat-num highlight-wickets">{match.currentBowler.wickets}</span>
+                      <span className="stat-label">Wickets</span>
+                    </div>
+                    <div className="ck-bowler-stat">
+                      <span className="stat-num">{match.currentBowler.economy}</span>
+                      <span className="stat-label">Econ</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Ball-by-Ball Delivery Strip */}
+          <div className="ck-ballbyball-detailed-section">
+            <h4 className="ck-col-heading">⚡ REAL-TIME BALL BY BALL</h4>
+            {match.currentOver?.balls?.length > 0 ? (
+              <div className="ck-over-deliveries-row">
+                <span className="ck-over-tag">Over {match.currentOver.overNumber}:</span>
+                <div className="ck-delivery-chips-group">
+                  {match.currentOver.balls.map((b, i) => (
+                    <BallChip key={i} outcome={b} />
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {/* Recent overs summary */}
+            {match.recentOvers && match.recentOvers.length > 1 && (
+              <div className="ck-recent-overs-history">
+                {match.recentOvers.slice(1).map((ro, idx) => (
+                  <div key={idx} className="ck-recent-over-subrow">
+                    <span className="ck-subover-tag">Over {ro.overNumber}:</span>
+                    <div className="ck-delivery-chips-group">
+                      {ro.balls.map((b, bIdx) => (
+                        <BallChip key={bIdx} outcome={b} />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Navigation Sub-Tabs */}
       <div className="ck-tabs detail-tabs">
         {[
-          { key: 'scorecard', label: '📋 Scorecard' },
+          { key: 'live', label: '🔴 Live Hub' },
+          { key: 'scorecard', label: '📋 Full Scorecard' },
           { key: 'commentary', label: '💬 Commentary' },
           { key: 'info', label: 'ℹ️ Match Info & Squads' },
           { key: 'predictor', label: '📊 Win Predictor' },
@@ -250,7 +374,7 @@ function CricketMatchDetailPage() {
             </>
           ) : (
             <div className="ck-empty-block">
-              <p className="ck-empty">Scorecard details will be available once play starts.</p>
+              <p className="ck-empty">Full scorecard details will be refreshed live as innings progress.</p>
             </div>
           )}
         </div>
@@ -260,93 +384,92 @@ function CricketMatchDetailPage() {
       {tab === 'commentary' && (
         <div className="ck-tab-content">
           <div className="ck-comm-filter-bar">
-            <button className={`ck-comm-filter ${commFilter === 'all' ? 'active' : ''}`} onClick={() => setCommFilter('all')}>
-              All Balls
-            </button>
-            <button className={`ck-comm-filter ${commFilter === 'boundaries' ? 'active' : ''}`} onClick={() => setCommFilter('boundaries')}>
-              Boundaries (4s/6s)
-            </button>
-            <button className={`ck-comm-filter ${commFilter === 'wickets' ? 'active' : ''}`} onClick={() => setCommFilter('wickets')}>
-              Wickets
-            </button>
+            <span className="ck-comm-label">Filter:</span>
+            {['all', 'wickets', 'boundaries'].map((f) => (
+              <button
+                key={f}
+                className={`ck-comm-pill ${commFilter === f ? 'active' : ''}`}
+                onClick={() => setCommFilter(f)}
+              >
+                {f === 'all' ? 'All Commentary' : f === 'wickets' ? '🔴 Wickets' : '🔥 Boundaries'}
+              </button>
+            ))}
           </div>
 
-          {commentaryList.length > 0 ? (
-            <div className="ck-commentary-feed">
-              {commentaryList.map((item, index) => (
-                <div key={index} className={`ck-comm-item ${item.event}`}>
-                  <div className="ck-comm-over">{item.over}</div>
-                  <div className="ck-comm-body">
-                    {item.event === 'four' && <span className="ck-badge-4">4 FOUR</span>}
-                    {item.event === 'six' && <span className="ck-badge-6">6 SIX</span>}
-                    {item.event === 'wicket' && <span className="ck-badge-w">W WICKET</span>}
-                    <p className="ck-comm-text">{item.text}</p>
+          <div className="ck-commentary-list">
+            {commentaryList.length > 0 ? (
+              commentaryList.map((c, i) => (
+                <div key={i} className={`ck-comm-item ${c.event ? `comm-${c.event}` : ''}`}>
+                  <div className="ck-comm-over">{c.over}</div>
+                  <div className="ck-comm-text">
+                    {c.event === 'six' && <span className="ck-comm-badge six">SIX</span>}
+                    {c.event === 'four' && <span className="ck-comm-badge four">FOUR</span>}
+                    {c.event === 'wicket' && <span className="ck-comm-badge wicket">WICKET</span>}
+                    {c.text}
                   </div>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="ck-empty-block">
-              <p className="ck-empty">No commentary updates matching this filter.</p>
-            </div>
-          )}
+              ))
+            ) : (
+              <p className="ck-empty">No commentary matching current filter.</p>
+            )}
+          </div>
         </div>
       )}
 
-      {/* Info & Playing XI Squads Tab */}
+      {/* Match Info & Squads Tab */}
       {tab === 'info' && (
         <div className="ck-tab-content">
-          <div className="ck-info-block">
-            <h3 className="ck-section-title">ℹ️ Match Summary & Details</h3>
+          <div className="ck-info-card">
+            <h3 className="ck-section-title">ℹ️ Match Information</h3>
             <div className="ck-info-grid">
               <div className="ck-info-item">
-                <span className="ck-label">Series:</span>
-                <span className="ck-val">{match.series}</span>
+                <span className="ck-info-key">Tournament / Series</span>
+                <span className="ck-info-val">{match.series}</span>
               </div>
               <div className="ck-info-item">
-                <span className="ck-label">Format:</span>
-                <span className="ck-val">{match.matchType?.toUpperCase()}</span>
+                <span className="ck-info-key">Match Format</span>
+                <span className="ck-info-val">{match.format || match.matchType?.toUpperCase()}</span>
               </div>
               <div className="ck-info-item">
-                <span className="ck-label">Venue:</span>
-                <span className="ck-val">{match.venue}</span>
+                <span className="ck-info-key">Venue</span>
+                <span className="ck-info-val">{match.venue || 'TBD'}</span>
               </div>
               <div className="ck-info-item">
-                <span className="ck-label">Toss:</span>
-                <span className="ck-val">{match.toss || 'TBD'}</span>
+                <span className="ck-info-key">Toss</span>
+                <span className="ck-info-val">{match.toss || 'Toss yet to take place'}</span>
               </div>
-              <div className="ck-info-item">
-                <span className="ck-label">Umpires:</span>
-                <span className="ck-val">{match.umpires || 'TBD'}</span>
-              </div>
-              <div className="ck-info-item">
-                <span className="ck-label">Match Referee:</span>
-                <span className="ck-val">{match.referee || 'TBD'}</span>
-              </div>
+              {match.umpires && (
+                <div className="ck-info-item">
+                  <span className="ck-info-key">Umpires</span>
+                  <span className="ck-info-val">{match.umpires}</span>
+                </div>
+              )}
+              {match.referee && (
+                <div className="ck-info-item">
+                  <span className="ck-info-key">Match Referee</span>
+                  <span className="ck-info-val">{match.referee}</span>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Playing XIs / Squads */}
-          {match.squads && (
+          {match.squads && (match.squads.team1?.length > 0 || match.squads.team2?.length > 0) && (
             <div className="ck-squads-container">
-              <h3 className="ck-section-title">👥 Playing XI / Squad Rosters</h3>
-              <div className="ck-squads-grid">
-                <div className="ck-squad-card">
-                  <h4>{match.team1.flag} {match.team1.name}</h4>
-                  <ul>
-                    {(match.squads.team1 || []).map((player, i) => (
-                      <li key={i}><span className="ck-player-icon">👤</span> {player}</li>
-                    ))}
-                  </ul>
+              <div className="ck-squad-column">
+                <h4 className="ck-squad-title">{match.team1.flag} {match.team1.name} Squad</h4>
+                <div className="ck-squad-list">
+                  {match.squads.team1.map((p, i) => (
+                    <div key={i} className="ck-squad-player">{p}</div>
+                  ))}
                 </div>
+              </div>
 
-                <div className="ck-squad-card">
-                  <h4>{match.team2.flag} {match.team2.name}</h4>
-                  <ul>
-                    {(match.squads.team2 || []).map((player, i) => (
-                      <li key={i}><span className="ck-player-icon">👤</span> {player}</li>
-                    ))}
-                  </ul>
+              <div className="ck-squad-column">
+                <h4 className="ck-squad-title">{match.team2.flag} {match.team2.name} Squad</h4>
+                <div className="ck-squad-list">
+                  {match.squads.team2.map((p, i) => (
+                    <div key={i} className="ck-squad-player">{p}</div>
+                  ))}
                 </div>
               </div>
             </div>
@@ -370,4 +493,4 @@ function CricketMatchDetailPage() {
   );
 }
 
-export default CricketMatchDetailPage;
+export default CricketMatchDetailPage;

@@ -1,7 +1,8 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth, useUser } from '@clerk/clerk-react';
 import socket from '../socket';
+import { useStreamContext } from '../context/StreamContext';
 import '../styles/GullyCricket.css';
 import '../styles/LiveScoring.css';
 
@@ -283,8 +284,44 @@ function LiveScoringPage() {
   const [pendingBowlerPick, setPendingBowlerPick] = useState(false);
   const [viewerCount, setViewerCount] = useState(0);
   const [isStreaming, setIsStreaming] = useState(false);
+  const lastSeqRef = useRef(0);
   const [scoring, setScoring] = useState(false);
   const [stashedBowler, setStashedBowler] = useState(null);
+
+  const {
+    activeMatchId,
+    mediaStream,
+    isStreaming: streamCtxIsStreaming,
+    cameraActive,
+    facingMode,
+    isAudioMuted,
+    startBroadcast,
+    stopBroadcast,
+    toggleFacingMode,
+    toggleAudioMute,
+  } = useStreamContext();
+
+  const [streamStarting, setStreamStarting] = useState(false);
+  const cameraPreviewRef = useRef(null);
+
+  const isCurrentMatchBroadcasting = Boolean(
+    cameraActive && activeMatchId === id && mediaStream
+  );
+  const effectiveIsStreaming = Boolean(isStreaming || (activeMatchId === id && streamCtxIsStreaming));
+
+  // Attach persistent stream to scoring page preview video element
+  useEffect(() => {
+    if (cameraPreviewRef.current) {
+      if (mediaStream && isCurrentMatchBroadcasting) {
+        cameraPreviewRef.current.srcObject = mediaStream;
+        cameraPreviewRef.current.play().catch((err) => {
+          console.warn('Scoring preview auto-play:', err.message);
+        });
+      } else {
+        cameraPreviewRef.current.srcObject = null;
+      }
+    }
+  }, [mediaStream, isCurrentMatchBroadcasting]);
 
   const isCreator = Boolean(
     user && match?.createdBy?.userId && (
@@ -338,8 +375,10 @@ function LiveScoringPage() {
     };
     socket.on('matchStreamUpdate', handleStreamUpdate);
 
-    const handleScoreUpdate = ({ matchId, match: updatedMatch, innings: updatedInnings }) => {
+    const handleScoreUpdate = ({ matchId, match: updatedMatch, innings: updatedInnings, seq }) => {
       if (String(matchId) === String(id) || String(updatedMatch?._id) === String(id)) {
+        if (seq && seq < lastSeqRef.current) return;
+        if (seq) lastSeqRef.current = seq;
         setMatch(updatedMatch);
         setInningsSummaries(updatedInnings || []);
         if (updatedMatch?.isLiveStreaming !== undefined) {
@@ -477,16 +516,87 @@ function LiveScoringPage() {
         <div className="ls-creator-stream-widget">
           <div className="ls-stream-widget-header">
             <div className="ls-stream-status-pill">
-              <span className={`ls-status-dot ${isStreaming ? 'is-live' : ''}`}></span>
-              <strong>{isStreaming ? '🔴 LIVE STREAMING' : '🎥 STREAM OFF'}</strong>
+              <span className={`ls-status-dot ${effectiveIsStreaming ? 'is-live' : ''}`}></span>
+              <strong>{effectiveIsStreaming ? '🔴 LIVE STREAMING' : '🎥 STREAM OFF'}</strong>
+              {isCurrentMatchBroadcasting && (
+                <span className="ls-stream-cam-tag">📷 Camera Active ({facingMode === 'environment' ? 'Back' : 'Front'})</span>
+              )}
             </div>
 
             <div className="ls-stream-actions">
+              {isCurrentMatchBroadcasting ? (
+                <>
+                  <button
+                    type="button"
+                    className="ls-stream-btn ls-btn-flip"
+                    onClick={toggleFacingMode}
+                    title="Flip between back and front camera"
+                  >
+                    🔄 Flip Camera
+                  </button>
+                  <button
+                    type="button"
+                    className="ls-stream-btn ls-btn-flip"
+                    onClick={toggleAudioMute}
+                    title="Mute / unmute microphone"
+                  >
+                    {isAudioMuted ? '🎙️ Unmute Mic' : '🔇 Mute Mic'}
+                  </button>
+                  <button
+                    type="button"
+                    className="ls-stream-btn ls-btn-stop"
+                    onClick={() => stopBroadcast(id)}
+                  >
+                    ⏹️ Stop Stream
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  className="ls-stream-btn ls-btn-start"
+                  disabled={streamStarting}
+                  onClick={async () => {
+                    setStreamStarting(true);
+                    try {
+                      await startBroadcast(id, facingMode);
+                    } catch (err) {
+                      alert('Could not start camera: ' + err.message);
+                    } finally {
+                      setStreamStarting(false);
+                    }
+                  }}
+                >
+                  {streamStarting ? '⏳ Starting Camera...' : '🔴 Start Camera Stream Here'}
+                </button>
+              )}
+
               <Link to={`/gully-cricket/match/${id}/stream`} className="ls-stream-btn ls-btn-hub">
-                🎥 Open Live Stream & Chat ↗
+                🎥 Full Studio & Chat ↗
+              </Link>
+              <Link to={`/gully-cricket/match/${id}/bigscreen`} className="ls-stream-btn ls-btn-stadium">
+                📺 Stadium Big Screen ↗
               </Link>
             </div>
           </div>
+
+          {/* Persistent Camera Video Feed Preview directly in Scoring View */}
+          {isCurrentMatchBroadcasting && (
+            <div className="ls-camera-preview-container">
+              <video
+                ref={cameraPreviewRef}
+                autoPlay
+                playsInline
+                muted
+                className="ls-camera-preview-video"
+              />
+              <div className="ls-camera-preview-overlay">
+                <span>🔴 BROADCASTING LIVE TO SPECTATORS</span>
+              </div>
+              <div className="ls-camera-preview-watermark">
+                <span>{match.teamA.name} vs {match.teamB.name} · Score Live</span>
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <div className="gc-spectator-mode-banner">
@@ -494,9 +604,14 @@ function LiveScoringPage() {
             <span className="gc-spectator-badge">👀 SPECTATOR MODE</span>
             <p>Scores update in real time. Only the match creator can update scores.</p>
           </div>
-          <Link to={`/gully-cricket/match/${id}/stream`} className="ls-stream-btn ls-btn-start">
-            🎥 Watch Live Stream & Chat ↗
-          </Link>
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <Link to={`/gully-cricket/match/${id}/stream`} className="ls-stream-btn ls-btn-start">
+              🎥 Watch Live Stream & Chat ↗
+            </Link>
+            <Link to={`/gully-cricket/match/${id}/bigscreen`} className="ls-stream-btn" style={{ background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.2), rgba(245, 158, 11, 0.1))', borderColor: 'rgba(251, 191, 36, 0.4)', color: '#fef08a' }}>
+              📺 Stadium Big Screen ↗
+            </Link>
+          </div>
         </div>
       )}
 

@@ -146,6 +146,17 @@ function MatchDetailPage() {
           >
             {isCreator ? '🎥 Broadcast / Manage Stream' : '🎥 Watch Live Stream & Chat'}
           </Link>
+          <Link
+            to={`/gully-cricket/match/${match._id}/bigscreen`}
+            className="gc-btn-action"
+            style={{
+              background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.2), rgba(245, 158, 11, 0.1))',
+              borderColor: 'rgba(251, 191, 36, 0.4)',
+              color: '#fef08a',
+            }}
+          >
+            📺 Stadium Big Screen ↗
+          </Link>
         </div>
       </div>
 
