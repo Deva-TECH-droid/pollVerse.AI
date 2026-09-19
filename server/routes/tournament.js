@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Tournament = require('../models/Tournament');
 const Match = require('../models/Match');
+const { generateMatchHighlights } = require('../utils/highlights');
 const { requireAuth } = require('../middleware/auth');
 
 router.post('/', requireAuth, async (req, res) => {
@@ -297,17 +298,37 @@ function getInningsTotals(innings) {
 }
 
 async function computePointsTable(tournament) {
-  const leagueFixtures = tournament.fixtures.filter((f) => f.stage === 'league' && f.status === 'completed' && f.matchId);
-  const matchIds = leagueFixtures.map((f) => f.matchId);
+  const allLeagueFixtures = tournament.fixtures.filter((f) => f.stage === 'league');
+  const completedLeagueFixtures = allLeagueFixtures.filter((f) => f.status === 'completed' && f.matchId);
+  const matchIds = completedLeagueFixtures.map((f) => f.matchId);
   const matches = await Match.find({ _id: { $in: matchIds } });
   const matchById = new Map(matches.map((m) => [String(m._id), m]));
 
   const stats = {};
   tournament.teams.forEach((t) => {
-    stats[t.name] = { name: t.name, played: 0, won: 0, lost: 0, tied: 0, points: 0, runsFor: 0, oversFor: 0, runsAgainst: 0, oversAgainst: 0 };
+    stats[t.name] = {
+      name: t.name,
+      played: 0,
+      won: 0,
+      lost: 0,
+      draws: 0,
+      points: 0,
+      runsFor: 0,
+      oversFor: 0,
+      runsAgainst: 0,
+      oversAgainst: 0,
+      status: '', // 'Q' | 'E' | '-'
+    };
   });
 
-  leagueFixtures.forEach((f) => {
+  // Calculate total scheduled league matches per team
+  const totalScheduledPerTeam = {};
+  tournament.teams.forEach((t) => {
+    const count = allLeagueFixtures.filter((f) => f.teamAName === t.name || f.teamBName === t.name).length;
+    totalScheduledPerTeam[t.name] = count || (tournament.teams.length > 1 ? tournament.teams.length - 1 : 10);
+  });
+
+  completedLeagueFixtures.forEach((f) => {
     const match = matchById.get(String(f.matchId));
     if (!match || match.status !== 'completed') return;
 
@@ -318,9 +339,12 @@ async function computePointsTable(tournament) {
     stats[teamAName].played += 1;
     stats[teamBName].played += 1;
 
-    if (match.winner === 'tie') {
-      stats[teamAName].tied += 1;
-      stats[teamBName].tied += 1;
+    const resStr = (match.result || '').toLowerCase();
+    const isTieOrDraw = match.winner === 'tie' || match.winner === 'draw' || resStr.includes('tie') || resStr.includes('draw') || resStr.includes('no result');
+
+    if (isTieOrDraw) {
+      stats[teamAName].draws += 1;
+      stats[teamBName].draws += 1;
       stats[teamAName].points += 1;
       stats[teamBName].points += 1;
     } else if (match.winner === 'teamA' || match.winner === 'teamB') {
@@ -333,12 +357,13 @@ async function computePointsTable(tournament) {
       if (stats[loserName]) stats[loserName].lost += 1;
     }
 
-    // NRR bookkeeping — a team all out uses the FULL allotted overs (not
-    // just the overs they actually faced), per standard NRR convention.
+    // NRR bookkeeping — a team all out uses the FULL allotted overs
     match.innings.forEach((inn) => {
       const totals = getInningsTotals(inn);
-      const battingTeamName = match[inn.battingTeam].name;
-      const bowlingTeamName = match[inn.bowlingTeam].name;
+      const battingTeamName = match[inn.battingTeam]?.name;
+      const bowlingTeamName = match[inn.bowlingTeam]?.name;
+      if (!battingTeamName || !bowlingTeamName) return;
+
       const battingPlayers = match[inn.battingTeam].players.length;
       const wicketsDown = inn.balls.filter((b) => b.isWicket).length;
       const wasAllOut = wicketsDown >= battingPlayers - 1;
@@ -360,10 +385,64 @@ async function computePointsTable(tournament) {
       t.oversFor > 0 && t.oversAgainst > 0
         ? Math.round((t.runsFor / t.oversFor - t.runsAgainst / t.oversAgainst) * 100) / 100
         : 0;
-    return { ...t, nrr };
+    const totalScheduled = totalScheduledPerTeam[t.name] || t.played;
+    const remainingMatches = Math.max(0, totalScheduled - t.played);
+    const maxPossiblePoints = t.points + remainingMatches * 2;
+
+    return {
+      ...t,
+      tied: t.draws, // backward compatibility
+      nrr,
+      totalScheduled,
+      remainingMatches,
+      maxPossiblePoints,
+    };
   });
 
   table.sort((a, b) => b.points - a.points || b.nrr - a.nrr);
+
+  // Dynamic Mathematical Qualification (Q) and Elimination (E)
+  // Configurable qualifying spots based on tournament format (top 4 for playoffs, top 2 if small)
+  const qualifyingSpots = Math.min(4, Math.max(1, Math.floor(tournament.teams.length / 2)));
+  const anyMatchesPlayed = table.some((t) => t.played > 0);
+
+  if (anyMatchesPlayed && table.length >= qualifyingSpots) {
+    table.forEach((team) => {
+      const otherTeams = table.filter((o) => o.name !== team.name);
+
+      // Condition for Qualification ('Q'):
+      // Even if team loses ALL remaining games (stays at team.points),
+      // count how many other teams can mathematically reach or exceed team.points.
+      // If that number is strictly less than qualifyingSpots, team CANNOT fall out of the top K!
+      const teamsCanReach = otherTeams.filter((o) => o.maxPossiblePoints >= team.points).length;
+      if (team.played > 0 && teamsCanReach < qualifyingSpots) {
+        team.status = 'Q';
+        return;
+      }
+
+      // Condition for Elimination ('E'):
+      // Even if team wins ALL remaining games (reaches team.maxPossiblePoints),
+      // count how many teams already have strictly more points than team.maxPossiblePoints.
+      // If that number >= qualifyingSpots, it is mathematically impossible to reach top K!
+      const teamsAlreadyAhead = otherTeams.filter((o) => o.points > team.maxPossiblePoints).length;
+      if (teamsAlreadyAhead >= qualifyingSpots) {
+        team.status = 'E';
+        return;
+      }
+
+      // If team has completed all matches and cannot reach the qualifying spots
+      if (team.remainingMatches === 0) {
+        const currentRank = table.indexOf(team) + 1;
+        if (currentRank > qualifyingSpots) {
+          team.status = 'E';
+          return;
+        }
+      }
+
+      team.status = '-';
+    });
+  }
+
   return table;
 }
 
@@ -432,7 +511,9 @@ function computeMatchPlayerContributions(match) {
   const fielding = {};
 
   const ensureBat = (name) => (batting[name] = batting[name] || { name, runs: 0, ballsFaced: 0, fours: 0, sixes: 0, isOut: false });
-  const ensureBowl = (name) => (bowling[name] = bowling[name] || { name, wickets: 0, runsConceded: 0, legalBalls: 0 });
+  const ensureBowl = (name) => (bowling[name] = bowling[name] || { name, wickets: 0, runsConceded: 0, legalBalls: 0, dotBalls: 0, maidens: 0 });
+
+  const oversBowledInMatch = new Map(); // bowlerName -> Map(overNumber -> { legal: 0, runs: 0 })
 
   match.innings.forEach((inn) => {
     inn.balls.forEach((b) => {
@@ -453,6 +534,19 @@ function computeMatchPlayerContributions(match) {
       if (legal) bowler.legalBalls += 1;
       bowler.runsConceded += runsAgainstBowler;
 
+      if (legal && runsAgainstBowler === 0 && !b.extraType) {
+        bowler.dotBalls += 1;
+      }
+
+      // Track overs for maidens
+      if (!oversBowledInMatch.has(b.bowler)) oversBowledInMatch.set(b.bowler, new Map());
+      const bMap = oversBowledInMatch.get(b.bowler);
+      const ov = b.overNumber || 0;
+      const ovStats = bMap.get(ov) || { legal: 0, runs: 0 };
+      if (legal) ovStats.legal += 1;
+      ovStats.runs += runsAgainstBowler;
+      bMap.set(ov, ovStats);
+
       if (b.isWicket) {
         const outName = b.outBatsman || b.striker;
         ensureBat(outName).isOut = true;
@@ -462,6 +556,15 @@ function computeMatchPlayerContributions(match) {
         }
       }
     });
+  });
+
+  // Calculate maidens from completed 6-ball overs with 0 runs conceded
+  oversBowledInMatch.forEach((bMap, bowlerName) => {
+    let maidens = 0;
+    bMap.forEach((ovStats) => {
+      if (ovStats.legal >= 6 && ovStats.runs === 0) maidens += 1;
+    });
+    if (bowling[bowlerName]) bowling[bowlerName].maidens = maidens;
   });
 
   return { batting, bowling, fielding };
@@ -478,6 +581,7 @@ router.get('/:id/player-stats', async (req, res) => {
     const battingTotals = {};
     const bowlingTotals = {};
     const fieldingTotals = {};
+    const playerMvpTotals = {};
 
     matches.forEach((match) => {
       const { batting, bowling, fielding } = computeMatchPlayerContributions(match);
@@ -493,16 +597,28 @@ router.get('/:id/player-stats', async (req, res) => {
           if (b.runs >= 50 && b.runs < 100) t.fifties += 1;
           if (b.runs >= 100) t.hundreds += 1;
           if (b.runs > t.highestScore) t.highestScore = b.runs;
+
+          // Batting MVP
+          let mvp = b.runs + b.fours * 2 + b.sixes * 4 + (b.runs >= 50 ? 25 : b.runs >= 30 ? 10 : 0);
+          playerMvpTotals[b.name] = (playerMvpTotals[b.name] || 0) + mvp;
         }
       });
       Object.values(bowling).forEach((b) => {
-        const t = (bowlingTotals[b.name] = bowlingTotals[b.name] || { name: b.name, wickets: 0, runsConceded: 0, legalBalls: 0 });
+        const t = (bowlingTotals[b.name] = bowlingTotals[b.name] || { name: b.name, wickets: 0, runsConceded: 0, legalBalls: 0, dotBalls: 0, maidens: 0 });
         t.wickets += b.wickets;
         t.runsConceded += b.runsConceded;
         t.legalBalls += b.legalBalls;
+        t.dotBalls += b.dotBalls;
+        t.maidens += b.maidens;
+
+        // Bowling MVP
+        let mvp = b.wickets * 25 + (b.wickets >= 3 ? 20 : 0) + b.maidens * 5;
+        if (b.legalBalls >= 6 && b.runsConceded / (b.legalBalls / 6) < 6.0) mvp += 15;
+        playerMvpTotals[b.name] = (playerMvpTotals[b.name] || 0) + mvp;
       });
       Object.entries(fielding).forEach(([name, count]) => {
         fieldingTotals[name] = (fieldingTotals[name] || 0) + count;
+        playerMvpTotals[name] = (playerMvpTotals[name] || 0) + count * 12;
       });
     });
 
@@ -515,8 +631,12 @@ router.get('/:id/player-stats', async (req, res) => {
       ...b,
       economy: b.legalBalls > 0 ? Math.round((b.runsConceded / (b.legalBalls / 6)) * 100) / 100 : 0,
     }));
+    const mvpRankings = Object.entries(playerMvpTotals).map(([name, mvpPoints]) => ({
+      name,
+      mvpPoints,
+    }));
 
-    const top = (arr, key, n = 5) => [...arr].sort((a, b) => b[key] - a[key]).slice(0, n);
+    const top = (arr, key, n = 5) => [...arr].sort((a, b) => (b[key] || 0) - (a[key] || 0)).slice(0, n);
 
     res.json({
       mostRuns: top(batters, 'runs'),
@@ -525,6 +645,9 @@ router.get('/:id/player-stats', async (req, res) => {
       bestEconomy: [...bowlers.filter((b) => b.legalBalls >= 6)].sort((a, b) => a.economy - b.economy).slice(0, 5),
       mostSixes: top(batters, 'sixes'),
       mostFours: top(batters, 'fours'),
+      mostDotBalls: top(bowlers, 'dotBalls'),
+      mostMaidens: top(bowlers, 'maidens'),
+      mostMvpPoints: top(mvpRankings, 'mvpPoints'),
       most50s: top(batters, 'fifties'),
       most100s: top(batters, 'hundreds'),
       mostCatches: Object.entries(fieldingTotals).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([name, count]) => ({ name, count })),
@@ -833,6 +956,52 @@ router.get('/:id/celebration-stats', async (req, res) => {
       bestEconomicalTeam,
       winningTeamPlayers: tournament.winningTeam ? playersWithStats(tournament.winningTeam) : [],
     });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+
+// ---------------------------------------------------------------------------
+// Tournament Highlights — aggregates key match events across all completed
+// fixtures in this tournament. Returns them chronologically.
+// ---------------------------------------------------------------------------
+router.get('/:id/highlights', async (req, res) => {
+  try {
+    const tournament = await Tournament.findById(req.params.id);
+    if (!tournament) return res.status(404).json({ message: 'Tournament not found' });
+
+    const completedFixtures = tournament.fixtures.filter((f) => f.status === 'completed' && f.matchId);
+    const matches = await Match.find({ _id: { $in: completedFixtures.map((f) => f.matchId) } }).sort({ createdAt: 1 });
+
+    // We need a basic inningsSummary function here — borrow the logic inline
+    const buildBasicSummary = (match, inn) => {
+      let totalRuns = 0;
+      inn.balls.forEach((b) => {
+        const teamRuns = b.extraType === 'wide' || b.extraType === 'noball' ? 1 + (b.runs || 0) : b.runs || 0;
+        totalRuns += teamRuns;
+      });
+      return { totalRuns, matchTeamA: match.teamA.name, matchTeamB: match.teamB.name };
+    };
+
+    const allHighlights = [];
+    matches.forEach((match) => {
+      const inningsSummaries = match.innings.map((inn) => buildBasicSummary(match, inn));
+      const matchHighlights = generateMatchHighlights(match, inningsSummaries);
+      matchHighlights.forEach((h) => {
+        allHighlights.push({
+          ...h,
+          matchId: match._id,
+          matchTitle: `${match.teamA.name} vs ${match.teamB.name}`,
+          matchResult: match.result || '',
+        });
+      });
+    });
+
+    // Sort by timestamp (oldest first so it reads like a timeline)
+    allHighlights.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+    res.json({ tournamentId: tournament._id, tournamentName: tournament.name, highlights: allHighlights });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }

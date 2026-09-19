@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const Match = require('../models/Match');
+const Tournament = require('../models/Tournament');
+const { generateMatchHighlights } = require('../utils/highlights');
 const { requireAuth } = require('../middleware/auth');
 const { generateMotmCertificate } = require('../utils/certificate');
 const { sendMatchScorecardEmail } = require('../utils/email');
@@ -748,6 +750,17 @@ router.post('/matches/:id/ball', requireAuth, async (req, res) => {
     const cur = innings.current;
     const legal = !['wide', 'noball'].includes(extraType);
 
+    // --- FREE HIT ENFORCEMENT ---
+    // If previous ball was a no-ball, this is a free hit — only run outs allowed
+    if (cur.isFreeHit && isWicket) {
+      const allowedOnFreeHit = ['run out'];
+      if (!allowedOnFreeHit.includes(wicketType)) {
+        return res.status(400).json({
+          message: `⚡ FREE HIT ball — only Run Out is a valid dismissal (not ${wicketType}).`,
+        });
+      }
+    }
+
     // A fresh over needs a bowler pick before the first ball can be recorded.
     if (cur.legalBallsThisOver === 0 && innings.balls.length > 0) {
       if (newBowlerName) cur.bowler = newBowlerName;
@@ -758,12 +771,26 @@ router.post('/matches/:id/ball', requireAuth, async (req, res) => {
 
     if (isWicket && !newBatsmanName) {
       const battingPlayers = match[innings.battingTeam].players;
-      const alreadyBatted = new Set(innings.balls.map((b) => b.striker).concat(innings.balls.map((b) => b.nonStriker)));
       const wicketsSoFar = innings.balls.filter((b) => b.isWicket).length + 1;
       if (wicketsSoFar < battingPlayers.length - 1) {
         return res.status(400).json({ message: 'Select the new batsman coming in.' });
       }
     }
+
+    // Save state snapshot for undo BEFORE mutating anything
+    const undoSnapshot = {
+      striker: cur.striker,
+      nonStriker: cur.nonStriker,
+      bowler: cur.bowler,
+      legalBallsThisOver: cur.legalBallsThisOver,
+      oversCompleted: cur.oversCompleted,
+      isFreeHit: cur.isFreeHit || false,
+      inningsWasComplete: innings.isComplete,
+      matchStatus: match.status,
+      matchResult: match.result || '',
+      matchWinner: match.winner || null,
+      firstInningsScore: match.firstInningsScore || null,
+    };
 
     const ball = {
       overNumber: cur.oversCompleted,
@@ -779,10 +806,21 @@ router.post('/matches/:id/ball', requireAuth, async (req, res) => {
       fielder: isWicket ? fielderName || null : null,
       shotDirection: !isWicket && !extraType && runs > 0 ? shotDirection || null : null,
       timestamp: new Date(),
+      _undoSnapshot: undoSnapshot, // embedded snapshot for undo
     };
     innings.balls.push(ball);
 
     if (legal) cur.legalBallsThisOver += 1;
+
+    // --- FREE HIT FLAG MANAGEMENT ---
+    // A no-ball sets free hit for the NEXT ball
+    if (extraType === 'noball') {
+      cur.isFreeHit = true;
+    } else if (legal) {
+      // Any legal delivery (non-wide/noball) clears the free hit
+      cur.isFreeHit = false;
+    }
+    // Wides don't reset free hit — it carries over
 
     // Strike rotation for runs actually run between the wickets.
     const runsForRotation = extraType === 'bye' || extraType === 'legbye' ? runs : extraType === 'wide' ? 0 : runs;
@@ -799,8 +837,7 @@ router.post('/matches/:id/ball', requireAuth, async (req, res) => {
       }
     }
 
-    // Over complete — rotate strike again (batsmen cross for the new over)
-    // and clear the bowler so the next call must supply one.
+    // Over complete — rotate strike again and clear bowler.
     if (cur.legalBallsThisOver >= 6) {
       cur.legalBallsThisOver = 0;
       cur.oversCompleted += 1;
@@ -824,7 +861,6 @@ router.post('/matches/:id/ball', requireAuth, async (req, res) => {
       if (match.innings.length === 1) {
         match.firstInningsScore = summary.totalRuns;
       } else {
-        // Second innings just wrapped up — decide the result.
         match.status = 'completed';
         const target = innings.target;
         if (summary.totalRuns >= target) {
@@ -859,6 +895,7 @@ router.post('/matches/:id/ball', requireAuth, async (req, res) => {
         latestBall: ball,
         inningsJustEnded,
         matchComplete: match.status === 'completed',
+        isFreeHit: cur.isFreeHit || false,
         seq,
       });
       io.emit('globalMatchScoreUpdate', {
@@ -871,9 +908,6 @@ router.post('/matches/:id/ball', requireAuth, async (req, res) => {
 
     if (match.status === 'completed') {
       if (!match.tournamentId) {
-        // Standalone matches only — tournament fixtures don't get this
-        // individual email, since the tournament has its own celebration
-        // summary at the end.
         notifyMatchCreatorByEmail(match).catch((err) => {
           console.error('❌ Failed to send match scorecard email:', err);
         });
@@ -890,7 +924,101 @@ router.post('/matches/:id/ball', requireAuth, async (req, res) => {
       innings: inningsSummaries,
       inningsJustEnded,
       matchComplete: match.status === 'completed',
+      isFreeHit: cur.isFreeHit || false,
     });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Undo last ball — reverts the most recent delivery. Creator only.
+// ---------------------------------------------------------------------------
+router.post('/matches/:id/undo', requireAuth, async (req, res) => {
+  try {
+    const match = await Match.findById(req.params.id);
+    if (!match) return res.status(404).json({ message: 'Match not found' });
+    if (match.createdBy?.userId && String(match.createdBy.userId) !== String(req.user._id)) {
+      return res.status(403).json({ message: 'Only the match creator can undo a ball.' });
+    }
+
+    const innings = match.innings[match.innings.length - 1];
+    if (!innings || !innings.balls || innings.balls.length === 0) {
+      return res.status(400).json({ message: 'No balls to undo.' });
+    }
+
+    // Pop the last ball and restore state from its snapshot
+    const lastBall = innings.balls[innings.balls.length - 1];
+    innings.balls.splice(innings.balls.length - 1, 1);
+
+    const snap = lastBall._undoSnapshot;
+    if (snap) {
+      innings.current.striker = snap.striker;
+      innings.current.nonStriker = snap.nonStriker;
+      innings.current.bowler = snap.bowler;
+      innings.current.legalBallsThisOver = snap.legalBallsThisOver;
+      innings.current.oversCompleted = snap.oversCompleted;
+      innings.current.isFreeHit = snap.isFreeHit;
+
+      // Restore match-level state that was captured in snapshot
+      innings.isComplete = snap.inningsWasComplete || false;
+      match.status = snap.matchStatus || 'live';
+      match.result = snap.matchResult || '';
+      match.winner = snap.matchWinner || null;
+      if (snap.matchStatus !== 'completed') {
+        match.awards = null;
+      }
+      if (snap.firstInningsScore !== undefined) {
+        match.firstInningsScore = snap.firstInningsScore;
+      }
+    } else {
+      // Fallback for balls without snapshots (old matches)
+      innings.isComplete = false;
+      if (match.status === 'completed') {
+        match.status = 'live';
+        match.result = '';
+        match.winner = null;
+        match.awards = null;
+      }
+    }
+
+    match.markModified('innings');
+    await match.save();
+
+    const inningsSummaries = match.innings.map((inn) => buildInningsSummary(match, inn));
+    const io = req.app.get('io');
+    if (io) {
+      const seq = nextSeq(match._id);
+      io.to(`viewers:${match._id}`).emit('matchScoreUpdate', {
+        matchId: match._id,
+        match,
+        innings: inningsSummaries,
+        seq,
+        undone: true,
+        isFreeHit: innings.current.isFreeHit || false,
+      });
+      io.emit('globalMatchScoreUpdate', { matchId: match._id, match, innings: inningsSummaries, seq });
+    }
+
+    res.json({
+      message: 'Last ball undone successfully.',
+      match,
+      innings: inningsSummaries,
+      isFreeHit: innings.current.isFreeHit || false,
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// Match Highlights — key events extracted from ball log
+router.get('/matches/:id/highlights', async (req, res) => {
+  try {
+    const match = await Match.findById(req.params.id);
+    if (!match) return res.status(404).json({ message: 'Match not found' });
+    const inningsSummaries = match.innings.map((inn) => buildInningsSummary(match, inn));
+    const highlights = generateMatchHighlights(match, inningsSummaries);
+    res.json({ matchId: match._id, highlights });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
@@ -925,67 +1053,270 @@ router.get('/matches/:id/summary', async (req, res) => {
 // show up as different players.
 router.get('/players/:name', async (req, res) => {
   try {
-    const name = req.params.name;
-    const matches = await Match.find({
-      status: 'completed',
-      $or: [{ 'teamA.players': name }, { 'teamB.players': name }],
-    });
+    const rawName = req.params.name.trim();
+    const nameRegex = new RegExp(`^${rawName}$`, 'i');
 
-    if (matches.length === 0) {
-      return res.json({
-        name,
-        matchesPlayed: 0,
-        totalRuns: 0,
-        highestScore: 0,
-        average: 0,
-        strikeRate: 0,
-        fifties: 0,
-        wickets: 0,
-        motmAwards: 0,
-        mvpAwards: 0,
+    const [matches, tournaments] = await Promise.all([
+      Match.find({
+        status: 'completed',
+        $or: [{ 'teamA.players': nameRegex }, { 'teamB.players': nameRegex }],
+      }).sort({ createdAt: -1 }),
+      Tournament.find({
+        'teams.players.name': nameRegex,
+      }),
+    ]);
+
+    // Extract tournament roster metadata if available
+    let rosterPlayer = null;
+    let rosterTeamName = '';
+    tournaments.forEach((tourn) => {
+      tourn.teams?.forEach((team) => {
+        const found = team.players?.find((p) => p.name.toLowerCase() === rawName.toLowerCase());
+        if (found && !rosterPlayer) {
+          rosterPlayer = found;
+          rosterTeamName = team.name;
+        }
       });
-    }
+    });
 
     let totalRuns = 0;
     let totalBallsFaced = 0;
+    let fours = 0;
+    let sixes = 0;
     let timesOut = 0;
     let highestScore = 0;
+    let highestScoreNotOut = false;
     let fifties = 0;
+    let hundreds = 0;
     let totalWickets = 0;
+    let totalRunsConceded = 0;
+    let totalLegalBalls = 0;
+    let totalCatches = 0;
+    let totalRunOuts = 0;
+    let totalMaidens = 0;
+    let totalDotBalls = 0;
     let motmAwards = 0;
     let mvpAwards = 0;
+    let totalMvpPoints = 0;
+    let latestTeamName = rosterTeamName;
+
+    const recentForm = [];
+    const recentMatches = [];
 
     matches.forEach((match) => {
-      const summaries = match.innings.map((inn) => buildInningsSummary(match, inn));
-      summaries.forEach((inn) => {
-        const batEntry = inn.battingCard.find((b) => b.name === name);
-        if (batEntry && (batEntry.ballsFaced > 0 || batEntry.isOut)) {
-          totalRuns += batEntry.runs;
-          totalBallsFaced += batEntry.ballsFaced;
-          if (batEntry.isOut) timesOut += 1;
-          if (batEntry.runs > highestScore) highestScore = batEntry.runs;
-          if (batEntry.runs >= 50) fifties += 1;
-        }
-        const bowlEntry = inn.bowlingCard.find((b) => b.name === name);
-        if (bowlEntry) totalWickets += bowlEntry.wickets;
+      // Identify team
+      const isTeamA = match.teamA?.players?.some((p) => p.toLowerCase() === rawName.toLowerCase());
+      const isTeamB = match.teamB?.players?.some((p) => p.toLowerCase() === rawName.toLowerCase());
+      const playerTeam = isTeamA ? match.teamA.name : isTeamB ? match.teamB.name : '';
+      const opponentTeam = isTeamA ? match.teamB.name : isTeamB ? match.teamA.name : '';
+      if (!latestTeamName && playerTeam) latestTeamName = playerTeam;
+
+      let matchRuns = 0;
+      let matchBalls = 0;
+      let matchFours = 0;
+      let matchSixes = 0;
+      let matchOut = false;
+      let matchBatted = false;
+
+      let matchWkts = 0;
+      let matchRunsConceded = 0;
+      let matchLegalBalls = 0;
+      let matchBowled = false;
+
+      let matchCatches = 0;
+      let matchRunOuts = 0;
+
+      // Track maidens per over
+      const oversBowledInMatch = new Map(); // overNum -> { legalBalls, runs }
+
+      match.innings?.forEach((inn) => {
+        if (!Array.isArray(inn.balls)) return;
+        inn.balls.forEach((b) => {
+          const legal = !['wide', 'noball'].includes(b.extraType);
+          const batsmanRuns = !b.extraType || b.extraType === 'noball' ? b.runs || 0 : 0;
+          const teamRuns = b.extraType === 'wide' || b.extraType === 'noball' ? 1 + (b.runs || 0) : b.runs || 0;
+          const runsAgainstBowler = b.extraType === 'bye' || b.extraType === 'legbye' ? 0 : teamRuns;
+
+          if (b.striker?.toLowerCase() === rawName.toLowerCase()) {
+            matchBatted = true;
+            if (legal) matchBalls += 1;
+            if (!b.extraType || b.extraType === 'noball') {
+              matchRuns += batsmanRuns;
+              if (batsmanRuns === 4) matchFours += 1;
+              if (batsmanRuns === 6) matchSixes += 1;
+            }
+          }
+
+          if (b.bowler?.toLowerCase() === rawName.toLowerCase()) {
+            matchBowled = true;
+            if (legal) matchLegalBalls += 1;
+            matchRunsConceded += runsAgainstBowler;
+
+            if (legal && runsAgainstBowler === 0 && !b.extraType) {
+              totalDotBalls += 1;
+            }
+
+            const ov = b.overNumber || 0;
+            const ovStats = oversBowledInMatch.get(ov) || { legal: 0, runs: 0 };
+            if (legal) ovStats.legal += 1;
+            ovStats.runs += runsAgainstBowler;
+            oversBowledInMatch.set(ov, ovStats);
+
+            if (b.isWicket && b.wicketType !== 'run out') {
+              matchWkts += 1;
+            }
+          }
+
+          if (b.isWicket) {
+            if ((b.outBatsman || b.striker)?.toLowerCase() === rawName.toLowerCase()) {
+              matchOut = true;
+            }
+            if (b.fielder?.toLowerCase() === rawName.toLowerCase()) {
+              if (b.wicketType === 'caught') matchCatches += 1;
+              if (b.wicketType === 'run out') matchRunOuts += 1;
+            }
+          }
+        });
       });
-      if (match.awards?.motm?.name === name) motmAwards += 1;
-      if (match.awards?.mvp?.name === name) mvpAwards += 1;
+
+      // Calculate maidens from complete 6-ball overs with 0 runs
+      oversBowledInMatch.forEach((ov) => {
+        if (ov.legal >= 6 && ov.runs === 0) totalMaidens += 1;
+      });
+
+      if (matchBatted) {
+        totalRuns += matchRuns;
+        totalBallsFaced += matchBalls;
+        fours += matchFours;
+        sixes += matchSixes;
+        if (matchOut) timesOut += 1;
+        if (matchRuns > highestScore) {
+          highestScore = matchRuns;
+          highestScoreNotOut = !matchOut;
+        }
+        if (matchRuns >= 100) hundreds += 1;
+        else if (matchRuns >= 50) fifties += 1;
+      }
+
+      if (matchBowled) {
+        totalWickets += matchWkts;
+        totalRunsConceded += matchRunsConceded;
+        totalLegalBalls += matchLegalBalls;
+      }
+
+      totalCatches += matchCatches;
+      totalRunOuts += matchRunOuts;
+
+      // Calculate match MVP points
+      let matchMvp = matchRuns + matchFours * 2 + matchSixes * 4 + (matchRuns >= 50 ? 25 : matchRuns >= 30 ? 10 : 0);
+      matchMvp += matchWkts * 25 + (matchWkts >= 3 ? 20 : 0);
+      if (matchLegalBalls >= 6 && matchRunsConceded / (matchLegalBalls / 6) < 6.0) matchMvp += 15;
+      matchMvp += matchCatches * 12 + matchRunOuts * 15;
+      totalMvpPoints += matchMvp;
+
+      const isMotm = match.awards?.motm?.name?.toLowerCase() === rawName.toLowerCase();
+      const isMvp = match.awards?.mvp?.name?.toLowerCase() === rawName.toLowerCase();
+      if (isMotm) motmAwards += 1;
+      if (isMvp) mvpAwards += 1;
+
+      // Summary label for form guide (e.g. "64*" or "2/18" or "45 & 1/20")
+      let formLabel = '';
+      if (matchBatted && matchBowled && matchWkts > 0) {
+        formLabel = `${matchRuns}${matchOut ? '' : '*'} & ${matchWkts}w`;
+      } else if (matchBatted) {
+        formLabel = `${matchRuns}${matchOut ? '' : '*'}`;
+      } else if (matchBowled) {
+        formLabel = `${matchWkts}/${matchRunsConceded}`;
+      } else {
+        formLabel = 'DNB';
+      }
+
+      if (recentForm.length < 5) {
+        recentForm.push({
+          formLabel,
+          matchId: match._id,
+          date: match.createdAt,
+          opponent: opponentTeam,
+          matchRuns,
+          matchBalls,
+          matchWkts,
+          isOut: matchOut,
+        });
+      }
+
+      if (recentMatches.length < 10) {
+        recentMatches.push({
+          matchId: match._id,
+          date: match.createdAt,
+          opponent: opponentTeam,
+          team: playerTeam,
+          result: match.result,
+          runs: matchRuns,
+          balls: matchBalls,
+          isOut: matchOut,
+          wickets: matchWkts,
+          runsConceded: matchRunsConceded,
+          overs: matchLegalBalls > 0 ? (matchLegalBalls / 6).toFixed(1) : '0.0',
+          catches: matchCatches,
+          mvpPoints: matchMvp,
+          isMotm,
+          isMvp,
+        });
+      }
     });
 
+    // Determine primary player role dynamically
+    let role = rosterPlayer?.role || '';
+    if (!role) {
+      if (totalWickets >= 3 && totalRuns >= 40) role = 'All-Rounder';
+      else if (totalWickets >= 4 && totalRuns < 40) role = 'Bowler';
+      else role = 'Batsman';
+    }
+
+    const battingAverage = timesOut > 0 ? (totalRuns / timesOut).toFixed(1) : totalRuns.toFixed(1);
+    const strikeRate = totalBallsFaced > 0 ? ((totalRuns / totalBallsFaced) * 100).toFixed(1) : '0.0';
+    const bowlingEconomy = totalLegalBalls > 0 ? (totalRunsConceded / (totalLegalBalls / 6)).toFixed(2) : '0.00';
+    const bowlingAverage = totalWickets > 0 ? (totalRunsConceded / totalWickets).toFixed(1) : '—';
+    const oversBowled = totalLegalBalls > 0 ? (totalLegalBalls / 6).toFixed(1) : '0.0';
+
     res.json({
-      name,
+      name: rawName,
+      role,
+      team: latestTeamName || 'Local Cricket XI',
+      country: 'India',
+      battingStyle: rosterPlayer?.battingStyle || 'Right-hand bat',
+      bowlingStyle: rosterPlayer?.bowlingStyle || (totalWickets > 0 ? 'Right-arm medium' : 'Right-arm spin'),
+      jerseyNumber: rosterPlayer?.jerseyNumber || (Math.abs(rawName.split('').reduce((a, c) => a + c.charCodeAt(0), 0)) % 99 + 1),
       matchesPlayed: matches.length,
+      // Batting
       totalRuns,
-      highestScore,
-      average: timesOut > 0 ? Math.round((totalRuns / timesOut) * 10) / 10 : totalRuns,
-      strikeRate: totalBallsFaced > 0 ? Math.round((totalRuns / totalBallsFaced) * 1000) / 10 : 0,
+      ballsFaced: totalBallsFaced,
+      fours,
+      sixes,
+      highestScore: `${highestScore}${highestScoreNotOut ? '*' : ''}`,
+      average: battingAverage,
+      strikeRate,
       fifties,
+      hundreds,
+      // Bowling
       wickets: totalWickets,
+      oversBowled,
+      runsConceded: totalRunsConceded,
+      economy: bowlingEconomy,
+      bowlingAverage,
+      maidens: totalMaidens,
+      dotBalls: totalDotBalls,
+      // Fielding & MVP
+      catches: totalCatches,
+      runOuts: totalRunOuts,
+      mvpPoints: totalMvpPoints,
       motmAwards,
       mvpAwards,
+      recentForm,
+      recentMatches,
     });
   } catch (err) {
+    console.error('Error computing player profile:', err);
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 });

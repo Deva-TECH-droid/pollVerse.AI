@@ -102,6 +102,11 @@ const pollSchema = new mongoose.Schema({
       default: null,
     },
   },
+  matchId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Match',
+    default: null,
+  },
   createdBy: {
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     email: String,

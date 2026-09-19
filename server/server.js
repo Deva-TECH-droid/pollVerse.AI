@@ -1,4 +1,5 @@
 require('dotenv').config();
+
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -6,6 +7,7 @@ const cors = require('cors');
 const path = require('path');
 const { clerkMiddleware } = require('@clerk/express');
 const connectDB = require('./db');
+
 const pollRoutes = require('./routes/polls');
 const authRoutes = require('./routes/auth');
 const webhookRoutes = require('./routes/webhooks');
@@ -23,280 +25,558 @@ connectDB();
 const app = express();
 const httpServer = http.createServer(app);
 
-const isProduction = process.env.NODE_ENV === 'production';
+// ============================================================
+// CORS CONFIGURATION
+// ============================================================
 
-// Allowed origins: Vercel frontend in prod, localhost in dev
-const allowedOrigins = isProduction
-  ? [process.env.CLIENT_URL, 'https://livepollverse.vercel.app', 'https://poll-verse-ai-delta.vercel.app'].filter(Boolean)
-  : ['http://localhost:3000', 'http://localhost:3001'];
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'https://livepollverse.vercel.app',
+  'https://poll-verse-ai-delta.vercel.app',
+  'https://poll-verse-ai-d2f3.vercel.app',
+  process.env.CLIENT_URL
+].filter(Boolean);
 
+console.log('Allowed CORS Origins:', allowedOrigins);
 
-// Socket.io with CORS
+// ============================================================
+// SOCKET.IO
+// ============================================================
+
 const io = new Server(httpServer, {
   cors: {
     origin: allowedOrigins,
     methods: ['GET', 'POST'],
-  },
+    credentials: true
+  }
 });
 
-// Expose io on the app so route handlers (e.g. routes/comments.js) can grab
-// it via req.app.get('io') and broadcast to a poll's room.
+// Expose io on the app so route handlers can access it
 app.set('io', io);
 
-// Middleware
-app.use(cors({
-  origin: allowedOrigins,
-  credentials: true
-}));
+// ============================================================
+// EXPRESS MIDDLEWARE
+// ============================================================
 
-// Clerk webhook needs the RAW body to verify its signature, so it's mounted
-// here, BEFORE express.json() applies JSON parsing to everything else.
-app.use('/api/webhooks', express.raw({ type: 'application/json' }), webhookRoutes);
+// IMPORTANT:
+// CORS must be BEFORE all API routes.
+app.use(
+  cors({
+    origin: allowedOrigins,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+  })
+);
 
+// Clerk webhook needs RAW body to verify its signature.
+// Keep this BEFORE express.json().
+app.use(
+  '/api/webhooks',
+  express.raw({ type: 'application/json' }),
+  webhookRoutes
+);
+
+// JSON parser for all other routes
 app.use(express.json());
-// authorizedParties tells Clerk which frontend origins are allowed to
-// send session tokens — must match the `azp` claim in the JWT.
+
+// ============================================================
+// CLERK
+// ============================================================
+
 const authorizedParties = [
   'http://localhost:3000',
   'http://localhost:3001',
   process.env.CLIENT_URL,
   'https://livepollverse.vercel.app',
   'https://poll-verse-ai-d2f3.vercel.app',
-  'https://poll-verse-ai-delta.vercel.app',
+  'https://poll-verse-ai-delta.vercel.app'
 ].filter(Boolean);
 
-app.use(clerkMiddleware({ clockSkewInMs: 30000 }));
-// REST Routes
-app.use('/api/polls', pollRoutes);
-app.use('/api/auth', authRoutes);
-app.use('/api/rewards', rewardRoutes);
-app.use('/api/feedback', feedbackRoutes);
-app.use('/api/leaderboard', leaderboardRoutes);
-app.use('/api/comments', require('./routes/comments'));
-app.use('/api/admin', require('./routes/admin'));
-app.use('/api/gully-cricket', require('./routes/gullyCricket'));
-app.use('/api/gully-cricket/tournaments', require('./routes/tournament'));
-app.use('/api/cricket', require('./routes/internationalCricket'));
+app.use(
+  clerkMiddleware({
+    clockSkewInMs: 30000
+  })
+);
 
-// Health check endpoint
+// ============================================================
+// REST API ROUTES
+// ============================================================
+
+app.use('/api/polls', pollRoutes);
+
+app.use('/api/auth', authRoutes);
+
+app.use('/api/rewards', rewardRoutes);
+
+app.use('/api/feedback', feedbackRoutes);
+
+app.use('/api/leaderboard', leaderboardRoutes);
+
+app.use('/api/comments', require('./routes/comments'));
+
+app.use('/api/admin', require('./routes/admin'));
+
+app.use('/api/gully-cricket', require('./routes/gullyCricket'));
+
+app.use(
+  '/api/gully-cricket/tournaments',
+  require('./routes/tournament')
+);
+
+app.use(
+  '/api/cricket',
+  require('./routes/internationalCricket')
+);
+
+// ============================================================
+// HEALTH CHECK
+// ============================================================
+
 app.get('/', (req, res) => {
-  res.json({ status: 'PollVerse server is running 🚀', env: process.env.NODE_ENV });
+  res.json({
+    status: 'PollVerse server is running 🚀',
+    env: process.env.NODE_ENV
+  });
 });
 
-// ---------------------------------------------------------------------------
-// Live spectator count for Gully Cricket matches — simple in-memory
-// tracking (fine for a single server; no Redis needed at this scale).
-// matchViewers: matchId -> Map<viewerId, activeSocketCount>
-// The per-viewer socket count is what makes multi-tab correct: the same
-// person opening 3 tabs still counts as 1 viewer, and the count only drops
-// once ALL of their tabs have closed/disconnected.
-// ---------------------------------------------------------------------------
+// ============================================================
+// LIVE SPECTATOR COUNT
+// ============================================================
+
+// matchId -> Map<viewerId, activeSocketCount>
 const matchViewers = new Map();
-// socket.id -> { matchId, viewerId } so disconnect can find what to clean up.
+
+// socket.id -> { matchId, viewerId }
 const socketViewerInfo = new Map();
-// matchId -> broadcasterSocketId for real-time WebRTC stream routing
+
+// matchId -> broadcasterSocketId
 const matchBroadcasters = new Map();
 
 function getMatchViewerCount(matchId) {
   const viewers = matchViewers.get(matchId);
+
   return viewers ? viewers.size : 0;
 }
 
 function broadcastViewerCount(matchId) {
-  io.to(`viewers:${matchId}`).emit('viewerCountUpdate', { matchId, count: getMatchViewerCount(matchId) });
+  io.to(`viewers:${matchId}`).emit('viewerCountUpdate', {
+    matchId,
+    count: getMatchViewerCount(matchId)
+  });
 }
 
 function addViewer(matchId, viewerId, socketId) {
-  if (!matchViewers.has(matchId)) matchViewers.set(matchId, new Map());
+  if (!matchViewers.has(matchId)) {
+    matchViewers.set(matchId, new Map());
+  }
+
   const viewers = matchViewers.get(matchId);
+
   const wasNew = !viewers.has(viewerId);
-  viewers.set(viewerId, (viewers.get(viewerId) || 0) + 1);
-  socketViewerInfo.set(socketId, { matchId, viewerId });
-  if (wasNew) broadcastViewerCount(matchId);
+
+  viewers.set(
+    viewerId,
+    (viewers.get(viewerId) || 0) + 1
+  );
+
+  socketViewerInfo.set(socketId, {
+    matchId,
+    viewerId
+  });
+
+  if (wasNew) {
+    broadcastViewerCount(matchId);
+  }
 }
 
 function removeViewerBySocket(socketId) {
   const info = socketViewerInfo.get(socketId);
+
   if (!info) return;
+
   socketViewerInfo.delete(socketId);
 
   const { matchId, viewerId } = info;
+
   const viewers = matchViewers.get(matchId);
+
   if (!viewers || !viewers.has(viewerId)) return;
 
   const remaining = viewers.get(viewerId) - 1;
+
   if (remaining <= 0) {
     viewers.delete(viewerId);
-    if (viewers.size === 0) matchViewers.delete(matchId);
+
+    if (viewers.size === 0) {
+      matchViewers.delete(matchId);
+    }
+
     broadcastViewerCount(matchId);
   } else {
     viewers.set(viewerId, remaining);
   }
 }
 
-// Socket.io events
+// ============================================================
+// SOCKET.IO EVENTS
+// ============================================================
+
 io.on('connection', (socket) => {
   console.log(`Client connected: ${socket.id}`);
 
+  // ----------------------------------------------------------
+  // POLL ROOM
+  // ----------------------------------------------------------
+
   socket.on('joinPoll', (pollId) => {
     socket.join(pollId);
-    console.log(`Socket ${socket.id} joined room: ${pollId}`);
+
+    console.log(
+      `Socket ${socket.id} joined room: ${pollId}`
+    );
   });
 
-  socket.on('submitVote', async ({ pollId, optionIndex, token }) => {
-    try {
-      const user = await verifySocketUser(token);
-      if (!user) {
-        socket.emit('voteError', { message: 'Please log in to vote.' });
-        return;
-      }
+  // ----------------------------------------------------------
+  // SUBMIT VOTE
+  // ----------------------------------------------------------
 
-      const poll = await Poll.findById(pollId);
-      if (!poll) {
-        socket.emit('voteError', { message: 'Poll not found.' });
-        return;
-      }
-
-      if (poll.isClosed || (poll.closesAt && new Date() > poll.closesAt)) {
-        socket.emit('voteError', { message: 'This poll has closed.' });
-        return;
-      }
-
-      if (optionIndex === undefined || optionIndex < 0 || optionIndex >= poll.options.length) {
-        socket.emit('voteError', { message: 'Invalid option.' });
-        return;
-      }
-
-      const existingVote = await Vote.findOne({ pollId: poll._id, userId: user._id });
-      if (existingVote) {
-        socket.emit('voteError', { message: 'You have already voted on this poll. Votes cannot be changed.' });
-        return;
-      }
-
-      try {
-        await Vote.create({ pollId: poll._id, userId: user._id, optionIndex });
-      } catch (err) {
-        if (err.code === 11000) {
-          socket.emit('voteError', { message: 'You have already voted on this poll. Votes cannot be changed.' });
-          return;
-        }
-        throw err;
-      }
-
-      poll.options[optionIndex].votes += 1;
-      poll.totalVotes += 1;
-      await poll.save();
-
-      io.to(pollId).emit('pollUpdated', poll);
-    } catch (err) {
-      console.error('Vote error:', err.message);
-      socket.emit('voteError', { message: 'Something went wrong. Please try again.' });
-    }
-  });
-
-  socket.on('joinMatchViewer', async ({ matchId, token }) => {
-    if (!matchId) return;
-    // Logged-in users get a stable id (so multi-tab collapses to 1 viewer);
-    // guests fall back to this socket's own id, matching the socket 1:1.
-    let viewerId = socket.id;
-    if (token) {
+  socket.on(
+    'submitVote',
+    async ({ pollId, optionIndex, token }) => {
       try {
         const user = await verifySocketUser(token);
-        if (user) viewerId = String(user._id);
+
+        if (!user) {
+          socket.emit('voteError', {
+            message: 'Please log in to vote.'
+          });
+
+          return;
+        }
+
+        const poll = await Poll.findById(pollId);
+
+        if (!poll) {
+          socket.emit('voteError', {
+            message: 'Poll not found.'
+          });
+
+          return;
+        }
+
+        if (
+          poll.isClosed ||
+          (poll.closesAt && new Date() > poll.closesAt)
+        ) {
+          socket.emit('voteError', {
+            message: 'This poll has closed.'
+          });
+
+          return;
+        }
+
+        if (
+          optionIndex === undefined ||
+          optionIndex < 0 ||
+          optionIndex >= poll.options.length
+        ) {
+          socket.emit('voteError', {
+            message: 'Invalid option.'
+          });
+
+          return;
+        }
+
+        const existingVote = await Vote.findOne({
+          pollId: poll._id,
+          userId: user._id
+        });
+
+        if (existingVote) {
+          socket.emit('voteError', {
+            message:
+              'You have already voted on this poll. Votes cannot be changed.'
+          });
+
+          return;
+        }
+
+        try {
+          await Vote.create({
+            pollId: poll._id,
+            userId: user._id,
+            optionIndex
+          });
+        } catch (err) {
+          if (err.code === 11000) {
+            socket.emit('voteError', {
+              message:
+                'You have already voted on this poll. Votes cannot be changed.'
+            });
+
+            return;
+          }
+
+          throw err;
+        }
+
+        poll.options[optionIndex].votes += 1;
+        poll.totalVotes += 1;
+
+        await poll.save();
+
+        io.to(pollId).emit('pollUpdated', poll);
       } catch (err) {
-        // Invalid/expired token — just treat them as a guest viewer.
+        console.error('Vote error:', err.message);
+
+        socket.emit('voteError', {
+          message: 'Something went wrong. Please try again.'
+        });
       }
     }
-    socket.join(`viewers:${matchId}`);
-    addViewer(matchId, viewerId, socket.id);
-    socket.emit('viewerCountUpdate', { matchId, count: getMatchViewerCount(matchId) });
-  });
+  );
+
+  // ----------------------------------------------------------
+  // MATCH VIEWER
+  // ----------------------------------------------------------
+
+  socket.on(
+    'joinMatchViewer',
+    async ({ matchId, token }) => {
+      if (!matchId) return;
+
+      // Logged-in users get a stable ID.
+      // Guests use socket ID.
+      let viewerId = socket.id;
+
+      if (token) {
+        try {
+          const user = await verifySocketUser(token);
+
+          if (user) {
+            viewerId = String(user._id);
+          }
+        } catch (err) {
+          // Invalid/expired token = guest viewer
+        }
+      }
+
+      socket.join(`viewers:${matchId}`);
+
+      addViewer(
+        matchId,
+        viewerId,
+        socket.id
+      );
+
+      socket.emit('viewerCountUpdate', {
+        matchId,
+        count: getMatchViewerCount(matchId)
+      });
+    }
+  );
 
   socket.on('leaveMatchViewer', () => {
     removeViewerBySocket(socket.id);
   });
 
-  // --- WebRTC Live Streaming Signaling ---
-  // Active broadcaster socket for each match: matchId -> broadcasterSocketId
-  socket.on('streamBroadcasterJoin', ({ matchId }) => {
-    if (!matchId) return;
-    matchBroadcasters.set(String(matchId), socket.id);
-    socket.join(`stream-broadcaster:${matchId}`);
-    socket.to(`viewers:${matchId}`).emit('streamBroadcasterReady', { matchId, broadcasterSocketId: socket.id });
-    console.log(`🎥 Broadcaster ${socket.id} started stream for match ${matchId}`);
-  });
+  // ==========================================================
+  // WEBRTC LIVE STREAMING SIGNALING
+  // ==========================================================
 
-  // Viewer requests stream from broadcaster
-  socket.on('streamViewerJoin', ({ matchId }) => {
-    if (!matchId) return;
-    const broadcasterSocketId = matchBroadcasters.get(String(matchId));
-    if (broadcasterSocketId) {
-      io.to(broadcasterSocketId).emit('streamViewerJoined', {
-        matchId,
-        viewerSocketId: socket.id,
-      });
-    } else {
-      socket.to(`stream-broadcaster:${matchId}`).emit('streamViewerJoined', {
-        matchId,
-        viewerSocketId: socket.id,
-      });
+  // ----------------------------------------------------------
+  // BROADCASTER JOIN
+  // ----------------------------------------------------------
+
+  socket.on(
+    'streamBroadcasterJoin',
+    ({ matchId }) => {
+      if (!matchId) return;
+
+      matchBroadcasters.set(
+        String(matchId),
+        socket.id
+      );
+
+      socket.join(
+        `stream-broadcaster:${matchId}`
+      );
+
+      socket
+        .to(`viewers:${matchId}`)
+        .emit('streamBroadcasterReady', {
+          matchId,
+          broadcasterSocketId: socket.id
+        });
+
+      console.log(
+        `🎥 Broadcaster ${socket.id} started stream for match ${matchId}`
+      );
     }
-  });
+  );
 
-  // Relay WebRTC Offer from Broadcaster to Viewer
-  socket.on('streamOffer', ({ matchId, targetSocketId, offer }) => {
-    if (targetSocketId) {
-      io.to(targetSocketId).emit('streamOffer', {
-        matchId,
-        broadcasterSocketId: socket.id,
-        offer,
-      });
+  // ----------------------------------------------------------
+  // VIEWER JOIN
+  // ----------------------------------------------------------
+
+  socket.on(
+    'streamViewerJoin',
+    ({ matchId }) => {
+      if (!matchId) return;
+
+      const broadcasterSocketId =
+        matchBroadcasters.get(
+          String(matchId)
+        );
+
+      if (broadcasterSocketId) {
+        io.to(broadcasterSocketId).emit(
+          'streamViewerJoined',
+          {
+            matchId,
+            viewerSocketId: socket.id
+          }
+        );
+      } else {
+        socket
+          .to(`stream-broadcaster:${matchId}`)
+          .emit('streamViewerJoined', {
+            matchId,
+            viewerSocketId: socket.id
+          });
+      }
     }
-  });
+  );
 
-  // Relay WebRTC Answer from Viewer back to Broadcaster
-  socket.on('streamAnswer', ({ matchId, targetSocketId, answer }) => {
-    if (targetSocketId) {
-      io.to(targetSocketId).emit('streamAnswer', {
-        matchId,
-        viewerSocketId: socket.id,
-        answer,
-      });
+  // ----------------------------------------------------------
+  // WEBRTC OFFER
+  // ----------------------------------------------------------
+
+  socket.on(
+    'streamOffer',
+    ({ matchId, targetSocketId, offer }) => {
+      if (!targetSocketId) return;
+
+      io.to(targetSocketId).emit(
+        'streamOffer',
+        {
+          matchId,
+          broadcasterSocketId: socket.id,
+          offer
+        }
+      );
     }
-  });
+  );
 
-  // Relay ICE Candidates between peers
-  socket.on('streamIceCandidate', ({ targetSocketId, candidate }) => {
-    if (targetSocketId && candidate) {
-      io.to(targetSocketId).emit('streamIceCandidate', {
-        fromSocketId: socket.id,
-        candidate,
-      });
+  // ----------------------------------------------------------
+  // WEBRTC ANSWER
+  // ----------------------------------------------------------
+
+  socket.on(
+    'streamAnswer',
+    ({ matchId, targetSocketId, answer }) => {
+      if (!targetSocketId) return;
+
+      io.to(targetSocketId).emit(
+        'streamAnswer',
+        {
+          matchId,
+          viewerSocketId: socket.id,
+          answer
+        }
+      );
     }
-  });
+  );
 
-  // Broadcaster stops streaming
-  socket.on('streamStopped', ({ matchId }) => {
-    if (!matchId) return;
-    matchBroadcasters.delete(String(matchId));
-    socket.leave(`stream-broadcaster:${matchId}`);
-    io.to(`viewers:${matchId}`).emit('streamEnded', { matchId });
-  });
+  // ----------------------------------------------------------
+  // ICE CANDIDATES
+  // ----------------------------------------------------------
+
+  socket.on(
+    'streamIceCandidate',
+    ({ targetSocketId, candidate }) => {
+      if (!targetSocketId || !candidate) return;
+
+      io.to(targetSocketId).emit(
+        'streamIceCandidate',
+        {
+          fromSocketId: socket.id,
+          candidate
+        }
+      );
+    }
+  );
+
+  // ----------------------------------------------------------
+  // STREAM STOPPED
+  // ----------------------------------------------------------
+
+  socket.on(
+    'streamStopped',
+    ({ matchId }) => {
+      if (!matchId) return;
+
+      matchBroadcasters.delete(
+        String(matchId)
+      );
+
+      socket.leave(
+        `stream-broadcaster:${matchId}`
+      );
+
+      io
+        .to(`viewers:${matchId}`)
+        .emit('streamEnded', {
+          matchId
+        });
+    }
+  );
+
+  // ----------------------------------------------------------
+  // DISCONNECT
+  // ----------------------------------------------------------
 
   socket.on('disconnect', () => {
-    console.log(`Client disconnected: ${socket.id}`);
+    console.log(
+      `Client disconnected: ${socket.id}`
+    );
+
     removeViewerBySocket(socket.id);
-    for (const [mId, bId] of matchBroadcasters.entries()) {
+
+    for (
+      const [mId, bId]
+      of matchBroadcasters.entries()
+    ) {
       if (bId === socket.id) {
         matchBroadcasters.delete(mId);
-        io.to(`viewers:${mId}`).emit('streamEnded', { matchId: mId });
+
+        io
+          .to(`viewers:${mId}`)
+          .emit('streamEnded', {
+            matchId: mId
+          });
       }
     }
   });
 });
 
+// ============================================================
+// START SERVER
+// ============================================================
+
 const PORT = process.env.PORT || 5000;
+
 httpServer.listen(PORT, () => {
-  console.log(`🚀 LivePoll server running on http://localhost:${PORT}`);
+  console.log(
+    `🚀 LivePoll server running on http://localhost:${PORT}`
+  );
+
+  console.log(
+    `🌐 CORS enabled for:`,
+    allowedOrigins
+  );
+
   startPollCloseJob();
 });

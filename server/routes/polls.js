@@ -83,7 +83,7 @@ router.get('/', async (req, res) => {
 
 router.post('/', requireAuth, requireAdmin, async (req, res) => {
   try {
-    const { question, description, options, durationHours, rewardPoints } = req.body;
+    const { question, description, options, durationHours, rewardPoints, matchId } = req.body;
 
     if (!question || !options || options.length < 2) {
       return res.status(400).json({ message: 'Question and at least 2 options are required.' });
@@ -105,6 +105,7 @@ router.post('/', requireAuth, requireAdmin, async (req, res) => {
       durationHours: finalDurationHours,
       rewardPoints: rewardPoints || DEFAULT_REWARD_POINTS,
       closesAt,
+      matchId: matchId || null,
       createdBy: {
         userId: req.user._id,
         email: req.user.email,
