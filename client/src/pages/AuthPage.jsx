@@ -13,7 +13,8 @@ function AuthPage() {
   const containerRef = useRef(null);
   const cardRef = useRef(null);
 
-  const from = location.state?.from?.pathname || '/polls';
+  const rawFrom = location.state?.from?.pathname;
+  const from = (rawFrom && rawFrom !== '/login' && !rawFrom.startsWith('/login')) ? rawFrom : '/polls';
 
   useEffect(() => {
     if (isSignedIn) {

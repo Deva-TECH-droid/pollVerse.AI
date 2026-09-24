@@ -109,9 +109,9 @@ function Navbar() {
                 <span className="credits-badge">🪙 {user.credits || 0} Credits</span>
               </div>
               <div className="nav-avatar-dropdown-wrap" ref={dropdownRef}>
-                {clerkUser?.imageUrl ? (
+                {clerkUser?.imageUrl || user?.imageUrl ? (
                   <img
-                    src={clerkUser.imageUrl}
+                    src={clerkUser?.imageUrl || user?.imageUrl}
                     alt={user.name || user.email}
                     title={user.name || user.email}
                     className="nav-user-avatar"
@@ -241,8 +241,8 @@ function Navbar() {
             {user ? (
               <div className="mobile-user-section">
                 <div className="mobile-user-row">
-                  {clerkUser?.imageUrl && (
-                    <img src={clerkUser.imageUrl} alt="Avatar" className="mobile-avatar" />
+                  {(clerkUser?.imageUrl || user?.imageUrl) && (
+                    <img src={clerkUser?.imageUrl || user?.imageUrl} alt="Avatar" className="mobile-avatar" />
                   )}
                   <div className="mobile-user-meta">
                     <span className="mobile-user-name">{user.name || user.email}</span>

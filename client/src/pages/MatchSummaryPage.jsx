@@ -296,6 +296,23 @@ function MatchSummaryPage() {
           {match.overs}-over match · {match[match.tossWonBy].name} has won the toss and elected to {match.tossDecision === 'bat' ? 'bat first' : 'bowl first'}
         </p>
         {match.status === 'completed' && <div className="ls-result-banner" style={{ marginTop: 12 }}>🏆 {match.result}</div>}
+        
+        <div style={{ marginTop: 16, display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          <Link
+            to={`/create?matchId=${match._id}&question=${encodeURIComponent(`Who was the top performer in ${match.teamA.name} vs ${match.teamB.name}?`)}&options=${encodeURIComponent(`${awards?.motm?.name || match.teamA.players[0]},${awards?.mvp?.name || match.teamB.players[0]}`)}`}
+            className="gc-submit-btn"
+            style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}
+          >
+            🎯 Create AI Match Poll
+          </Link>
+          <Link
+            to={`/gully-cricket/match/${match._id}/bigscreen`}
+            className="ls-stream-btn"
+            style={{ textDecoration: 'none' }}
+          >
+            📺 Big Screen Scoreboard
+          </Link>
+        </div>
       </div>
 
       {awards && (

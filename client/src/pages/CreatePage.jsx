@@ -1,5 +1,5 @@
 import React, { useState, useContext, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@clerk/clerk-react';
 import { AuthContext } from '../context/AuthContext';
 import '../styles/CreatePage.css';
@@ -10,12 +10,25 @@ function CreatePage() {
   const { user, loading: authLoading } = useContext(AuthContext);
   const { getToken } = useAuth();
   const navigate = useNavigate();
-  const [question, setQuestion] = useState('');
-  const [description, setDescription] = useState('');
-  const [options, setOptions] = useState([
-    { text: '', info: '' },
-    { text: '', info: '' },
-  ]);
+  const location = useLocation();
+
+  const searchParams = new URLSearchParams(location.search);
+  const paramMatchId = searchParams.get('matchId') || null;
+  const paramQuestion = searchParams.get('question') || '';
+  const paramOptions = searchParams.get('options') ? searchParams.get('options').split(',').map(s => s.trim()).filter(Boolean) : [];
+
+  const [matchId] = useState(paramMatchId);
+  const [question, setQuestion] = useState(paramQuestion);
+  const [description, setDescription] = useState(paramMatchId ? 'Data-driven match prediction grounded on live performance & MVP stats.' : '');
+  const [options, setOptions] = useState(() => {
+    if (paramOptions.length >= 2) {
+      return paramOptions.map(text => ({ text, info: '' }));
+    }
+    return [
+      { text: '', info: '' },
+      { text: '', info: '' },
+    ];
+  });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
@@ -83,7 +96,7 @@ function CreatePage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ question: trimmedQuestion, description: description.trim(), options: validOptions }),
+        body: JSON.stringify({ question: trimmedQuestion, description: description.trim(), options: validOptions, matchId }),
       });
 
       if (!res.ok) {

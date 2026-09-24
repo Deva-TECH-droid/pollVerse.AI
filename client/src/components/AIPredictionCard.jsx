@@ -59,7 +59,9 @@ function AIPredictionCard({ poll }) {
         <span className="aiv-robot">🤖</span>
         <div className="aiv-header-text">
           <p className="aiv-title">AI Poll Insights & Prediction</p>
-          <p className="aiv-subtitle">Dynamic analysis based on topic stats, pros & cons</p>
+          <p className="aiv-subtitle">
+            {aiPrediction.dataSource ? `📊 Source: ${aiPrediction.dataSource}` : 'Dynamic analysis based on topic stats, pros & cons'}
+          </p>
         </div>
         <span className={`aiv-confidence aiv-confidence-${(aiPrediction.confidenceLevel || 'medium').toLowerCase()}`}>
           {aiPrediction.confidenceLevel || 'Medium'} Confidence
