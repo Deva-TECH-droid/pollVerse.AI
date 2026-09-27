@@ -2,10 +2,15 @@ const express = require('express');
 const router = express.Router();
 const Match = require('../models/Match');
 const Tournament = require('../models/Tournament');
+const PlayerProfile = require('../models/PlayerProfile');
+const TeamProfile = require('../models/TeamProfile');
 const { generateMatchHighlights } = require('../utils/highlights');
 const { requireAuth } = require('../middleware/auth');
 const { generateMotmCertificate } = require('../utils/certificate');
 const { sendMatchScorecardEmail } = require('../utils/email');
+const { upload } = require('../utils/upload');
+const { generateHistoricalHighlights } = require('../utils/historicalHighlights');
+const { compareTwoPlayers, getPlayerFullProfile } = require('../utils/playerAIComparison');
 
 // Per-match monotonic sequence counter for real-time score updates.
 // Clients use this to discard stale / out-of-order broadcasts.
@@ -19,7 +24,19 @@ function nextSeq(matchId) {
 
 router.post('/matches', requireAuth, async (req, res) => {
   try {
-    const { teamAName, teamBName, teamAPlayers, teamBPlayers, overs, tossWonBy, tossDecision } = req.body;
+    const {
+      teamAName,
+      teamBName,
+      teamAPlayers,
+      teamBPlayers,
+      overs,
+      tossWonBy,
+      tossDecision,
+      teamALogo = '',
+      teamBLogo = '',
+      teamAPlayerPhotos = {},
+      teamBPlayerPhotos = {},
+    } = req.body;
 
     if (!teamAName?.trim() || !teamBName?.trim()) {
       return res.status(400).json({ message: 'Both team names are required.' });
@@ -47,9 +64,81 @@ router.post('/matches', requireAuth, async (req, res) => {
     const battingTeam = tossDecision === 'bat' ? winner : loser;
     const bowlingTeam = battingTeam === 'teamA' ? 'teamB' : 'teamA';
 
+    // Handle Team A Logo & permanent profile
+    let effectiveLogoA = (teamALogo || '').trim();
+    if (effectiveLogoA) {
+      await TeamProfile.findOneAndUpdate(
+        { nameNormalized: teamAName.trim().toLowerCase() },
+        { $set: { logoUrl: effectiveLogoA, displayName: teamAName.trim() }, $setOnInsert: { name: teamAName.trim() } },
+        { upsert: true }
+      );
+    } else {
+      const existingTeamA = await TeamProfile.findOne({ nameNormalized: teamAName.trim().toLowerCase() });
+      if (existingTeamA?.logoUrl) effectiveLogoA = existingTeamA.logoUrl;
+    }
+
+    // Handle Team B Logo & permanent profile
+    let effectiveLogoB = (teamBLogo || '').trim();
+    if (effectiveLogoB) {
+      await TeamProfile.findOneAndUpdate(
+        { nameNormalized: teamBName.trim().toLowerCase() },
+        { $set: { logoUrl: effectiveLogoB, displayName: teamBName.trim() }, $setOnInsert: { name: teamBName.trim() } },
+        { upsert: true }
+      );
+    } else {
+      const existingTeamB = await TeamProfile.findOne({ nameNormalized: teamBName.trim().toLowerCase() });
+      if (existingTeamB?.logoUrl) effectiveLogoB = existingTeamB.logoUrl;
+    }
+
+    // Handle Player Photos for Team A
+    const effectivePhotosA = { ...teamAPlayerPhotos };
+    for (const player of cleanA) {
+      const photo = effectivePhotosA[player];
+      if (photo) {
+        await PlayerProfile.findOneAndUpdate(
+          { nameNormalized: player.toLowerCase() },
+          { $set: { photoUrl: photo, displayName: player, teamName: teamAName.trim() }, $setOnInsert: { name: player } },
+          { upsert: true }
+        );
+      } else {
+        const existingPlayer = await PlayerProfile.findOne({ nameNormalized: player.toLowerCase() });
+        if (existingPlayer?.photoUrl) {
+          effectivePhotosA[player] = existingPlayer.photoUrl;
+        }
+      }
+    }
+
+    // Handle Player Photos for Team B
+    const effectivePhotosB = { ...teamBPlayerPhotos };
+    for (const player of cleanB) {
+      const photo = effectivePhotosB[player];
+      if (photo) {
+        await PlayerProfile.findOneAndUpdate(
+          { nameNormalized: player.toLowerCase() },
+          { $set: { photoUrl: photo, displayName: player, teamName: teamBName.trim() }, $setOnInsert: { name: player } },
+          { upsert: true }
+        );
+      } else {
+        const existingPlayer = await PlayerProfile.findOne({ nameNormalized: player.toLowerCase() });
+        if (existingPlayer?.photoUrl) {
+          effectivePhotosB[player] = existingPlayer.photoUrl;
+        }
+      }
+    }
+
     const match = await Match.create({
-      teamA: { name: teamAName.trim(), players: cleanA },
-      teamB: { name: teamBName.trim(), players: cleanB },
+      teamA: {
+        name: teamAName.trim(),
+        players: cleanA,
+        logoUrl: effectiveLogoA,
+        playerPhotos: effectivePhotosA,
+      },
+      teamB: {
+        name: teamBName.trim(),
+        players: cleanB,
+        logoUrl: effectiveLogoB,
+        playerPhotos: effectivePhotosB,
+      },
       overs,
       tossWonBy,
       tossDecision,
@@ -932,22 +1021,257 @@ router.post('/matches/:id/ball', requireAuth, async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
-// Undo last ball — reverts the most recent delivery. Creator only.
+// Image Upload Endpoint (Player photos & Team logos)
+// Validates max 2MB, JPG/JPEG/PNG/WebP, stores in /uploads/
+// ---------------------------------------------------------------------------
+router.post('/upload', requireAuth, (req, res) => {
+  upload.single('file')(req, res, (err) => {
+    if (err) {
+      return res.status(400).json({ message: err.message });
+    }
+    if (!req.file) {
+      return res.status(400).json({ message: 'No image file uploaded.' });
+    }
+    const type = req.query.type || req.body.type || 'players';
+    const subfolder = type === 'teams' ? 'teams' : 'players';
+    const fileUrl = `/uploads/${subfolder}/${req.file.filename}`;
+    res.json({
+      success: true,
+      url: fileUrl,
+      filename: req.file.filename,
+      size: req.file.size,
+      mimetype: req.file.mimetype,
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Permanent Profile Endpoints (Autofill & Update)
+// ---------------------------------------------------------------------------
+
+// Batch lookup for team logos and player photos (used during match creation)
+router.post('/profiles/lookup', async (req, res) => {
+  try {
+    const { teamNames = [], playerNames = [] } = req.body;
+    const cleanTeams = teamNames.map((t) => (t || '').trim().toLowerCase()).filter(Boolean);
+    const cleanPlayers = playerNames.map((p) => (p || '').trim().toLowerCase()).filter(Boolean);
+
+    const [teamDocs, playerDocs] = await Promise.all([
+      TeamProfile.find({ nameNormalized: { $in: cleanTeams } }),
+      PlayerProfile.find({ nameNormalized: { $in: cleanPlayers } }),
+    ]);
+
+    const teamsMap = {};
+    teamDocs.forEach((t) => {
+      teamsMap[t.nameNormalized] = t.logoUrl;
+    });
+
+    const playersMap = {};
+    playerDocs.forEach((p) => {
+      playersMap[p.nameNormalized] = p.photoUrl;
+    });
+
+    res.json({ teams: teamsMap, players: playersMap });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// Update or set permanent player profile photo
+router.post('/players/photo', requireAuth, async (req, res) => {
+  try {
+    const { name, photoUrl, role, battingStyle, bowlingStyle } = req.body;
+    if (!name?.trim()) return res.status(400).json({ message: 'Player name is required.' });
+
+    const cleanName = name.trim();
+    const updateData = { displayName: cleanName };
+    if (photoUrl !== undefined) updateData.photoUrl = photoUrl;
+    if (role) updateData.role = role;
+    if (battingStyle) updateData.battingStyle = battingStyle;
+    if (bowlingStyle) updateData.bowlingStyle = bowlingStyle;
+
+    const profile = await PlayerProfile.findOneAndUpdate(
+      { nameNormalized: cleanName.toLowerCase() },
+      { $set: updateData, $setOnInsert: { name: cleanName } },
+      { new: true, upsert: true }
+    );
+
+    res.json({ success: true, profile });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// Update or set permanent team logo
+router.post('/teams/logo', requireAuth, async (req, res) => {
+  try {
+    const { name, logoUrl, shortName } = req.body;
+    if (!name?.trim()) return res.status(400).json({ message: 'Team name is required.' });
+
+    const cleanName = name.trim();
+    const updateData = { displayName: cleanName };
+    if (logoUrl !== undefined) updateData.logoUrl = logoUrl;
+    if (shortName) updateData.shortName = shortName;
+
+    const profile = await TeamProfile.findOneAndUpdate(
+      { nameNormalized: cleanName.toLowerCase() },
+      { $set: updateData, $setOnInsert: { name: cleanName } },
+      { new: true, upsert: true }
+    );
+
+    res.json({ success: true, profile });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Dynamic Historical Highlights & Records for live match
+// ---------------------------------------------------------------------------
+router.get('/matches/:id/historical-highlights', async (req, res) => {
+  try {
+    const match = await Match.findById(req.params.id);
+    if (!match) return res.status(404).json({ message: 'Match not found' });
+    const highlights = await generateHistoricalHighlights(match);
+    res.json({ matchId: match._id, highlights });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Stronger Data-Driven Player AI Comparison & Prediction
+// ---------------------------------------------------------------------------
+router.get('/compare-players', async (req, res) => {
+  try {
+    const { playerA, playerB } = req.query;
+    if (!playerA || !playerB) {
+      return res.status(400).json({ message: 'Both playerA and playerB parameters are required.' });
+    }
+    const result = await compareTwoPlayers(playerA, playerB);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+router.post('/compare-players', async (req, res) => {
+  try {
+    const { playerA, playerB } = req.body;
+    if (!playerA || !playerB) {
+      return res.status(400).json({ message: 'Both playerA and playerB are required.' });
+    }
+    const result = await compareTwoPlayers(playerA, playerB);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Change / Swap active batsman or bowler without undoing deliveries
+// ---------------------------------------------------------------------------
+router.post('/matches/:id/change-players', requireAuth, async (req, res) => {
+  try {
+    const { striker, nonStriker, bowler, swapStrike } = req.body;
+    const match = await Match.findById(req.params.id);
+    if (!match) return res.status(404).json({ message: 'Match not found' });
+    if (match.createdBy?.userId && String(match.createdBy.userId) !== String(req.user._id)) {
+      return res.status(403).json({ message: 'Only the match creator can update players.' });
+    }
+
+    const innings = match.innings[match.innings.length - 1];
+    if (!innings || !innings.current) {
+      return res.status(400).json({ message: 'No active innings in progress.' });
+    }
+
+    if (swapStrike) {
+      const temp = innings.current.striker;
+      innings.current.striker = innings.current.nonStriker;
+      innings.current.nonStriker = temp;
+    } else {
+      if (striker) innings.current.striker = striker;
+      if (nonStriker) innings.current.nonStriker = nonStriker;
+      if (bowler) innings.current.bowler = bowler;
+    }
+
+    match.markModified('innings');
+    await match.save();
+
+    const inningsSummaries = match.innings.map((inn) => buildInningsSummary(match, inn));
+    const io = req.app.get('io');
+    if (io) {
+      const seq = nextSeq(match._id);
+      io.to(`viewers:${match._id}`).emit('matchScoreUpdate', {
+        matchId: match._id,
+        match,
+        innings: inningsSummaries,
+        seq,
+      });
+      io.emit('globalMatchScoreUpdate', { matchId: match._id, match, innings: inningsSummaries, seq });
+    }
+
+    res.json({
+      message: 'Active players updated successfully.',
+      match,
+      innings: inningsSummaries,
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Undo last action / ball — reverts the most recent delivery or empty innings start.
 // ---------------------------------------------------------------------------
 router.post('/matches/:id/undo', requireAuth, async (req, res) => {
   try {
     const match = await Match.findById(req.params.id);
     if (!match) return res.status(404).json({ message: 'Match not found' });
     if (match.createdBy?.userId && String(match.createdBy.userId) !== String(req.user._id)) {
-      return res.status(403).json({ message: 'Only the match creator can undo a ball.' });
+      return res.status(403).json({ message: 'Only the match creator can undo a ball or action.' });
     }
 
     const innings = match.innings[match.innings.length - 1];
-    if (!innings || !innings.balls || innings.balls.length === 0) {
-      return res.status(400).json({ message: 'No balls to undo.' });
+    if (!innings) {
+      return res.status(400).json({ message: 'No innings or balls to undo.' });
     }
 
-    // Pop the last ball and restore state from its snapshot
+    // CASE 1: If current innings has 0 balls bowled (e.g. Scorer just started innings with wrong batsman/bowler)
+    if (!innings.balls || innings.balls.length === 0) {
+      match.innings.pop();
+      if (match.innings.length === 0) {
+        match.status = 'created';
+      } else {
+        match.status = 'live';
+      }
+      match.markModified('innings');
+      await match.save();
+
+      const inningsSummaries = match.innings.map((inn) => buildInningsSummary(match, inn));
+      const io = req.app.get('io');
+      if (io) {
+        const seq = nextSeq(match._id);
+        io.to(`viewers:${match._id}`).emit('matchScoreUpdate', {
+          matchId: match._id,
+          match,
+          innings: inningsSummaries,
+          seq,
+          undone: true,
+          revertedInningsStart: true,
+        });
+        io.emit('globalMatchScoreUpdate', { matchId: match._id, match, innings: inningsSummaries, seq });
+      }
+
+      return res.json({
+        message: 'Innings start undone. You can now re-select the opening batsmen and bowler.',
+        match,
+        innings: inningsSummaries,
+        revertedInningsStart: true,
+      });
+    }
+
+    // CASE 2: Pop the last ball and restore state from its embedded snapshot
     const lastBall = innings.balls[innings.balls.length - 1];
     innings.balls.splice(innings.balls.length - 1, 1);
 
@@ -972,7 +1296,7 @@ router.post('/matches/:id/undo', requireAuth, async (req, res) => {
         match.firstInningsScore = snap.firstInningsScore;
       }
     } else {
-      // Fallback for balls without snapshots (old matches)
+      // Fallback for balls without snapshots
       innings.isComplete = false;
       if (match.status === 'completed') {
         match.status = 'live';
@@ -1001,7 +1325,7 @@ router.post('/matches/:id/undo', requireAuth, async (req, res) => {
     }
 
     res.json({
-      message: 'Last ball undone successfully.',
+      message: 'Last ball undone successfully. Previous match state restored.',
       match,
       innings: inningsSummaries,
       isFreeHit: innings.current.isFreeHit || false,
@@ -1056,7 +1380,7 @@ router.get('/players/:name', async (req, res) => {
     const rawName = req.params.name.trim();
     const nameRegex = new RegExp(`^${rawName}$`, 'i');
 
-    const [matches, tournaments] = await Promise.all([
+    const [matches, tournaments, profileDoc] = await Promise.all([
       Match.find({
         status: 'completed',
         $or: [{ 'teamA.players': nameRegex }, { 'teamB.players': nameRegex }],
@@ -1064,6 +1388,7 @@ router.get('/players/:name', async (req, res) => {
       Tournament.find({
         'teams.players.name': nameRegex,
       }),
+      PlayerProfile.findOne({ nameNormalized: rawName.toLowerCase() }),
     ]);
 
     // Extract tournament roster metadata if available
@@ -1281,6 +1606,7 @@ router.get('/players/:name', async (req, res) => {
 
     res.json({
       name: rawName,
+      photoUrl: profileDoc?.photoUrl || '',
       role,
       team: latestTeamName || 'Local Cricket XI',
       country: 'India',

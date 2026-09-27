@@ -14,6 +14,7 @@
     "dotenv": "^16.6.1",
     "express": "^4.18.2",
     "mongoose": "^8.0.3",
+    "multer": "^2.4.0",
     "node-cron": "^3.0.3",
     "nodemailer": "^9.0.3",
     "pdfkit": "^0.19.1",

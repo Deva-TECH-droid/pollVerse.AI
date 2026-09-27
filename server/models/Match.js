@@ -6,12 +6,21 @@ const teamSchema = new mongoose.Schema({
     required: true,
     trim: true,
   },
+  logoUrl: {
+    type: String,
+    default: '',
+  },
   players: {
     type: [String], // free-text player names — gully cricket players usually aren't app users
     validate: {
       validator: (v) => v.length >= 2,
       message: 'A team needs at least 2 players.',
     },
+  },
+  // Map of playerName -> photoUrl
+  playerPhotos: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {},
   },
 });
 

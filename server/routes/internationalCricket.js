@@ -780,4 +780,33 @@ router.get('/matches/:id', async (req, res) => {
   return res.status(404).json({ message: 'Match details not found' });
 });
 
+// Real data-driven player comparison & AI prediction across local & international players
+const { compareTwoPlayers } = require('../utils/playerAIComparison');
+
+router.get('/compare-players', async (req, res) => {
+  try {
+    const { playerA, playerB } = req.query;
+    if (!playerA || !playerB) {
+      return res.status(400).json({ message: 'Both playerA and playerB parameters are required.' });
+    }
+    const result = await compareTwoPlayers(playerA, playerB);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+router.post('/compare-players', async (req, res) => {
+  try {
+    const { playerA, playerB } = req.body;
+    if (!playerA || !playerB) {
+      return res.status(400).json({ message: 'Both playerA and playerB are required.' });
+    }
+    const result = await compareTwoPlayers(playerA, playerB);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 module.exports = router;

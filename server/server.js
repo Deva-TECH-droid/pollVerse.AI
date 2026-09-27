@@ -81,6 +81,14 @@ app.use(
 // JSON parser for all other routes
 app.use(express.json());
 
+// Static file serving for user-uploaded player photos & team logos
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
+  maxAge: '7d',
+  setHeaders: (res) => {
+    res.set('Access-Control-Allow-Origin', '*');
+  },
+}));
+
 // ============================================================
 // CLERK
 // ============================================================
