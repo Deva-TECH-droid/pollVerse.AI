@@ -710,4 +710,86 @@
   .ls-shot-direction-grid {
     grid-template-columns: repeat(2, 1fr);
   }
+
+  .ls-action-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .ls-undo-btn,
+  .ls-change-players-btn,
+  .ls-ai-compare-btn {
+    width: 100%;
+  }
+}
+
+/* ── Action row: Undo / Change Players / AI Compare ── */
+.ls-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.ls-undo-btn,
+.ls-change-players-btn,
+.ls-ai-compare-btn {
+  flex: 1 1 auto;
+  padding: 10px 16px;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  letter-spacing: 0.03em;
+}
+
+.ls-undo-btn {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(220, 38, 38, 0.08));
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+}
+.ls-undo-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.28), rgba(220, 38, 38, 0.18));
+  border-color: rgba(239, 68, 68, 0.7);
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.ls-change-players-btn {
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.15), rgba(245, 158, 11, 0.08));
+  border: 1px solid rgba(251, 191, 36, 0.4);
+  color: #fde68a;
+}
+.ls-change-players-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.28), rgba(245, 158, 11, 0.18));
+  border-color: rgba(251, 191, 36, 0.7);
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
+}
+
+.ls-ai-compare-btn {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(109, 40, 217, 0.08));
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  color: #c4b5fd;
+}
+.ls-ai-compare-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.28), rgba(109, 40, 217, 0.18));
+  border-color: rgba(139, 92, 246, 0.7);
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+}
+
+.ls-undo-btn:disabled,
+.ls-change-players-btn:disabled,
+.ls-ai-compare-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
 }

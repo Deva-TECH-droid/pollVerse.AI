@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useAuth, useUser } from '@clerk/clerk-react';
 import socket from '../socket';
 import { useStreamContext } from '../context/StreamContext';
+import PlayerAIComparisonModal from '../components/PlayerAIComparisonModal';
 import '../styles/GullyCricket.css';
 import '../styles/LiveScoring.css';
 
@@ -270,6 +271,73 @@ function NewBowlerModal({ bowlingPlayers, lastBowler, onConfirm }) {
   );
 }
 
+function ChangePlayersModal({
+  battingPlayers,
+  bowlingPlayers,
+  currentStriker,
+  currentNonStriker,
+  currentBowler,
+  onConfirm,
+  onCancel,
+}) {
+  const [striker, setStriker] = useState(currentStriker || '');
+  const [nonStriker, setNonStriker] = useState(currentNonStriker || '');
+  const [bowler, setBowler] = useState(currentBowler || '');
+
+  return (
+    <div className="ls-modal-overlay">
+      <div className="ls-modal">
+        <h3>🏏 Correct Active Batsmen & Bowler</h3>
+        <p className="gc-field-label" style={{ textTransform: 'none', fontWeight: 500 }}>
+          If the wrong player was chosen, select the correct players to continue scoring seamlessly.
+        </p>
+
+        <div className="gc-form-field">
+          <label className="gc-field-label">Striker (On strike)</label>
+          <select value={striker} onChange={(e) => setStriker(e.target.value)}>
+            {battingPlayers.map((p) => (
+              <option key={p} value={p}>{p}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="gc-form-field">
+          <label className="gc-field-label">Non-Striker</label>
+          <select value={nonStriker} onChange={(e) => setNonStriker(e.target.value)}>
+            {battingPlayers.map((p) => (
+              <option key={p} value={p}>{p}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="gc-form-field">
+          <label className="gc-field-label">Current Bowler</label>
+          <select value={bowler} onChange={(e) => setBowler(e.target.value)}>
+            <option value="">Select bowler</option>
+            {bowlingPlayers.map((p) => (
+              <option key={p} value={p}>{p}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="ls-modal-actions">
+          <button type="button" className="ls-btn-secondary" onClick={onCancel}>
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="gc-submit-btn"
+            disabled={!striker || !nonStriker || striker === nonStriker}
+            onClick={() => onConfirm({ striker, nonStriker, bowler })}
+          >
+            Save Corrected Players
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function LiveScoringPage() {
   const { id } = useParams();
   const { getToken } = useAuth();
@@ -287,6 +355,9 @@ function LiveScoringPage() {
   const lastSeqRef = useRef(0);
   const [scoring, setScoring] = useState(false);
   const [stashedBowler, setStashedBowler] = useState(null);
+  const [undoing, setUndoing] = useState(false);
+  const [showChangePlayersModal, setShowChangePlayersModal] = useState(false);
+  const [showAIModal, setShowAIModal] = useState(false);
 
   const {
     activeMatchId,
@@ -476,6 +547,51 @@ function LiveScoringPage() {
     const payload = { ...extra, newBowlerName: stashedBowler };
     setStashedBowler(null);
     submitBall(payload);
+  };
+
+  const handleUndo = async () => {
+    setUndoing(true);
+    try {
+      const token = await getToken();
+      const res = await fetch(`${API_URL}/api/gully-cricket/matches/${id}/undo`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || 'Undo failed');
+      }
+      const data = await res.json();
+      applyResponse(data);
+      setStashedBowler(null);
+      setPendingBowlerPick(false);
+      setPendingExtraType(null);
+      setPendingRunTap(null);
+    } catch (err) {
+      alert('⚠️ Undo failed: ' + err.message);
+    } finally {
+      setUndoing(false);
+    }
+  };
+
+  const handleChangePlayers = async ({ striker, nonStriker, bowler }) => {
+    setShowChangePlayersModal(false);
+    try {
+      const token = await getToken();
+      const res = await fetch(`${API_URL}/api/gully-cricket/matches/${id}/change-players`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ strikerName: striker, nonStrikerName: nonStriker, bowlerName: bowler }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || 'Failed to change players');
+      }
+      const data = await res.json();
+      applyResponse(data);
+    } catch (err) {
+      alert('⚠️ Change players failed: ' + err.message);
+    }
   };
 
   if (loading) {
@@ -721,6 +837,32 @@ function LiveScoringPage() {
                     <button className="ls-extra-btn" disabled={scoring} onClick={() => setPendingExtraType('bye')}>Bye</button>
                     <button className="ls-extra-btn" disabled={scoring} onClick={() => setPendingExtraType('legbye')}>Leg Bye</button>
                     <button className="ls-wicket-btn" disabled={scoring} onClick={() => setShowWicketModal(true)}>🏏 WICKET</button>
+                    <div className="ls-action-row">
+                      <button
+                        className="ls-undo-btn"
+                        disabled={undoing || scoring}
+                        onClick={handleUndo}
+                        title="Undo last ball delivery"
+                      >
+                        {undoing ? '↩️ Undoing...' : '↩️ Undo Last Ball'}
+                      </button>
+                      <button
+                        className="ls-change-players-btn"
+                        disabled={scoring}
+                        onClick={() => setShowChangePlayersModal(true)}
+                        title="Correct wrong batsman or bowler selection"
+                      >
+                        🔄 Change Players
+                      </button>
+                      <button
+                        className="ls-ai-compare-btn"
+                        disabled={scoring}
+                        onClick={() => setShowAIModal(true)}
+                        title="AI Player Comparison"
+                      >
+                        🤖 AI Compare
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <div className="gc-spectator-scoring-banner">
@@ -766,6 +908,27 @@ function LiveScoringPage() {
           bowlingPlayers={match[lastInnings.bowlingTeam].players}
           lastBowler={lastInnings.current.bowler}
           onConfirm={handleBowlerConfirm}
+        />
+      )}
+
+      {showChangePlayersModal && lastInnings && (
+        <ChangePlayersModal
+          battingPlayers={match[lastInnings.battingTeam].players}
+          bowlingPlayers={match[lastInnings.bowlingTeam].players}
+          currentStriker={lastInnings.current.striker}
+          currentNonStriker={lastInnings.current.nonStriker}
+          currentBowler={lastInnings.current.bowler}
+          onConfirm={handleChangePlayers}
+          onCancel={() => setShowChangePlayersModal(false)}
+        />
+      )}
+
+      {showAIModal && lastInnings && (
+        <PlayerAIComparisonModal
+          matchId={id}
+          battingTeamPlayers={match[lastInnings.battingTeam].players}
+          bowlingTeamPlayers={match[lastInnings.bowlingTeam].players}
+          onClose={() => setShowAIModal(false)}
         />
       )}
     </div>

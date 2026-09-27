@@ -1,9 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
+import { useAuth } from '@clerk/clerk-react';
+import PlayerAIComparisonModal from '../components/PlayerAIComparisonModal';
 import '../styles/GullyCricket.css';
 import '../styles/PlayerProfile.css';
 
 const API_URL = process.env.REACT_APP_API_URL || '';
+const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2 MB
+const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
 
 function StatTile({ label, value, subtext, icon, highlight = false }) {
   return (
@@ -21,11 +25,16 @@ function StatTile({ label, value, subtext, icon, highlight = false }) {
 function PlayerProfilePage() {
   const { name: nameFromUrl } = useParams();
   const navigate = useNavigate();
+  const { getToken } = useAuth();
   const [searchName, setSearchName] = useState(nameFromUrl || '');
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('all'); // 'all' | 'batting' | 'bowling' | 'matches'
+  const [showCompareModal, setShowCompareModal] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [photoError, setPhotoError] = useState(null);
+  const fileInputRef = useRef(null);
 
   const fetchProfile = async (name) => {
     if (!name?.trim()) return;
@@ -40,6 +49,60 @@ function PlayerProfilePage() {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePhotoUpload = async (file) => {
+    setPhotoError(null);
+    if (!file || !profile) return;
+
+    if (!ALLOWED_MIME.includes(file.type)) {
+      setPhotoError('Invalid format. Please select a JPG, JPEG, PNG, or WebP image.');
+      return;
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      setPhotoError(`Image exceeds 2MB limit (${(file.size / (1024 * 1024)).toFixed(1)}MB).`);
+      return;
+    }
+
+    setUploadingPhoto(true);
+    try {
+      const token = await getToken();
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('type', 'players');
+
+      // 1. Upload the file
+      const uploadRes = await fetch(`${API_URL}/api/gully-cricket/upload?type=players`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      if (!uploadRes.ok) {
+        const errJson = await uploadRes.json().catch(() => ({}));
+        throw new Error(errJson.message || 'Failed to upload photo');
+      }
+      const uploadData = await uploadRes.json();
+
+      // 2. Persist to PlayerProfile
+      const saveRes = await fetch(`${API_URL}/api/gully-cricket/players/photo`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          name: profile.name,
+          photoUrl: uploadData.url,
+          role: profile.role,
+        }),
+      });
+      if (!saveRes.ok) {
+        throw new Error('Failed to save photo to player profile');
+      }
+
+      setProfile((prev) => (prev ? { ...prev, photoUrl: uploadData.url } : prev));
+    } catch (err) {
+      setPhotoError(err.message);
+    } finally {
+      setUploadingPhoto(false);
     }
   };
 
@@ -112,10 +175,43 @@ function PlayerProfilePage() {
           <div className="pp-hero-sports-card">
             <div className="pp-hero-left">
               <div className="pp-avatar-wrap">
-                <div className="pp-player-jersey-badge">
-                  <span className="pp-jersey-num">#{profile.jerseyNumber || 18}</span>
-                  <span className="pp-jersey-initials">{getInitials(profile.name)}</span>
-                </div>
+                {profile.photoUrl ? (
+                  <div className="pp-player-photo-container">
+                    <img
+                      src={profile.photoUrl.startsWith('http') ? profile.photoUrl : `${API_URL}${profile.photoUrl}`}
+                      alt={profile.name}
+                      className="pp-player-photo-img"
+                    />
+                    <button
+                      type="button"
+                      className="pp-photo-change-btn"
+                      onClick={() => fileInputRef.current?.click()}
+                      title="Update profile picture (Max 2MB)"
+                    >
+                      {uploadingPhoto ? '⏳' : '📷'}
+                    </button>
+                  </div>
+                ) : (
+                  <div
+                    className="pp-player-jersey-badge"
+                    onClick={() => fileInputRef.current?.click()}
+                    title="Click to upload profile picture (Max 2MB)"
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <span className="pp-jersey-num">#{profile.jerseyNumber || 18}</span>
+                    <span className="pp-jersey-initials">{getInitials(profile.name)}</span>
+                    <span className="pp-photo-badge-upload-hint">📷</span>
+                  </div>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/jpg"
+                  style={{ display: 'none' }}
+                  onChange={(e) => {
+                    if (e.target.files?.[0]) handlePhotoUpload(e.target.files[0]);
+                  }}
+                />
                 <div className="pp-role-pill">
                   {roleEmoji(profile.role)} {profile.role || 'Player'}
                 </div>
@@ -137,6 +233,26 @@ function PlayerProfilePage() {
                   <span className="pp-style-badge">🏏 {profile.battingStyle || 'Right-hand bat'}</span>
                   <span className="pp-style-badge">⚾ {profile.bowlingStyle || 'Right-arm medium'}</span>
                 </div>
+
+                <div style={{ marginTop: '12px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    className="gc-submit-btn"
+                    style={{ padding: '6px 14px', fontSize: '0.82rem', background: 'linear-gradient(135deg, #2563eb, #7c3aed)' }}
+                    onClick={() => setShowCompareModal(true)}
+                  >
+                    🤖 Compare with Another Player (AI)
+                  </button>
+                  <button
+                    type="button"
+                    className="gc-preset-btn"
+                    style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    {uploadingPhoto ? 'Uploading Photo...' : '📷 Update Photo'}
+                  </button>
+                </div>
+                {photoError && <p className="gc-error" style={{ fontSize: '0.78rem', marginTop: 4 }}>⚠️ {photoError}</p>}
               </div>
             </div>
 
@@ -324,6 +440,15 @@ function PlayerProfilePage() {
             </div>
           )}
         </div>
+      )}
+
+      {/* Player AI Comparison Modal */}
+      {showCompareModal && (
+        <PlayerAIComparisonModal
+          isOpen={showCompareModal}
+          onClose={() => setShowCompareModal(false)}
+          initialPlayerA={profile?.name || ''}
+        />
       )}
     </div>
   );
