@@ -1,10 +1,8 @@
 <div align="center">
 
-# 🗳️ PollVerse.AI
+# 🗳️ PollVerse.AI — Real-Time AI Polling, Prediction & Live Cricket Platform
 
-### Real-time, AI-powered polling & prediction platform
-
-Create polls · Predict outcomes · Follow live cricket · Earn credits · Climb the leaderboard 🏆
+### PollVerse: the open-source MERN stack app to create polls, predict outcomes, follow live cricket scores, earn credits & climb the leaderboard 🏆
 
 ![Node](https://img.shields.io/badge/Node.js-18%2B-339933?logo=node.js&logoColor=white)
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)
@@ -16,43 +14,51 @@ Create polls · Predict outcomes · Follow live cricket · Earn credits · Climb
 
 <br/>
 
-<a href="#-getting-started"><img src="https://img.shields.io/badge/🚀_Quick_Start-black?style=for-the-badge" /></a>
-<a href="#-screenshots"><img src="https://img.shields.io/badge/📸_Screenshots-black?style=for-the-badge" /></a>
-<a href="#-features"><img src="https://img.shields.io/badge/✨_Features-black?style=for-the-badge" /></a>
-<a href="#️-roadmap"><img src="https://img.shields.io/badge/🗺️_Roadmap-black?style=for-the-badge" /></a>
+<a href="#-getting-started"><img src="https://img.shields.io/badge/🚀_Quick_Start-black?style=for-the-badge" alt="PollVerse quick start" /></a>
+<a href="#-screenshots"><img src="https://img.shields.io/badge/📸_Screenshots-black?style=for-the-badge" alt="PollVerse screenshots" /></a>
+<a href="#-features"><img src="https://img.shields.io/badge/✨_Features-black?style=for-the-badge" alt="PollVerse features" /></a>
+<a href="#️-roadmap"><img src="https://img.shields.io/badge/🗺️_Roadmap-black?style=for-the-badge" alt="PollVerse roadmap" /></a>
 
 <br/><br/>
 
-<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&size=22&pause=1000&color=2EA3F7&center=true&vCenter=true&width=650&lines=Create+polls.+Predict+outcomes.+Win+credits.;Follow+live+cricket+scores+in+real+time.;Powered+by+AI+insights+%26+Socket.IO.;Built+on+the+MERN+stack+%E2%9A%A1" alt="Typing SVG" />
+<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&size=22&pause=1000&color=2EA3F7&center=true&vCenter=true&width=650&lines=Create+polls.+Predict+outcomes.+Win+credits.;Follow+live+cricket+scores+in+real+time.;Powered+by+AI+insights+%26+Socket.IO.;Built+on+the+MERN+stack+%E2%9A%A1" alt="PollVerse.AI - create polls, predict outcomes, follow live cricket scores" />
 
 </div>
 
 <div align="center">
-  <img src="https://capsule-render.vercel.app/api?type=waving&color=0:2EA3F7,100:47A248&height=120&section=header" width="100%"/>
+  <img src="https://capsule-render.vercel.app/api?type=waving&color=0:2EA3F7,100:47A248&height=120&section=header" width="100%" alt="PollVerse.AI header banner"/>
 </div>
+
+> **🔗 Live Demo:** _add your deployed PollVerse link here_ &nbsp;|&nbsp; **📦 Repo:** `pollverse-ai` &nbsp;|&nbsp; **👤 Author:** _your name_
 
 ---
 
 ## 📖 Table of Contents
 
-- [Overview](#-overview)
+- [What is PollVerse?](#-what-is-pollverse)
 - [Screenshots](#-screenshots)
 - [Features](#-features)
   - [Polling & Predictions](#️-polling--predictions)
   - [Cricket](#-cricket)
+- [Why PollVerse.AI?](#-why-pollverseai)
+- [Use Cases](#-use-cases)
 - [Tech Stack](#-tech-stack)
 - [Cloud Technologies](#️-cloud-technologies)
 - [Getting Started](#-getting-started)
 - [How It Works](#-how-it-works)
 - [Scripts](#-scripts)
+- [FAQ](#-faq)
 - [Roadmap](#️-roadmap)
+- [Contributing](#-contributing)
 - [License](#-license)
 
 ---
 
-## 🔎 Overview
+## 🔎 What is PollVerse?
 
-**PollVerse.AI** is a real-time, AI-powered polling and prediction platform built on the MERN stack. Admins create polls, users log in via passwordless email OTP, cast predictions, and earn credits for getting it right. AI-generated insights help users make smarter predictions, while a live leaderboard keeps the competition going — across both **general polls** and **live cricket matches**.
+**PollVerse.AI** (also written as **PollVerse**) is a real-time, AI-powered **online polling and prediction platform** built on the **MERN stack** (MongoDB, Express.js, React, Node.js). Admins create polls, users log in via **passwordless email OTP**, cast predictions, and earn credits for getting it right. AI-generated insights help users make smarter predictions, while a **live leaderboard** keeps the competition going — across both **general polls** and **live cricket matches**.
+
+If you are looking for a **real-time polling app**, a **prediction game with leaderboard**, a **live cricket score and prediction app**, or a **Socket.IO + React + MongoDB project** to learn from or fork, PollVerse.AI is built for exactly that.
 
 <div align="center">
 
@@ -70,19 +76,19 @@ Create polls · Predict outcomes · Follow live cricket · Earn credits · Climb
 
 | Home / Dashboard | Live Poll Results |
 |:---:|:---:|
-| <img src="./screensorts/Prointro.png" width="400" alt="Home dashboard"/> | <img src="./screensorts/PollSection.png" width="400" alt="Live poll results"/> |
+| <img src="./screensorts/Prointro.png" width="400" alt="PollVerse home dashboard"/> | <img src="./screensorts/PollSection.png" width="400" alt="PollVerse live poll results in real time"/> |
 
 | Cricket Live Match | Leaderboard |
 |:---:|:---:|
-| <img src="./screensorts/CrickINterface.png" width="400" alt="Live cricket dashboard"/> | <img src="./screensorts/Leaderbord.png" width="400" alt="Leaderboard"/> |
+| <img src="./screensorts/CrickINterface.png" width="400" alt="PollVerse live cricket score dashboard"/> | <img src="./screensorts/Leaderbord.png" width="400" alt="PollVerse prediction leaderboard"/> |
 
 | AI Insights | Admin |
 |:---:|:---:|
-| <img src="./screensorts/AIInsight.png" width="400" alt="AI insights panel"/> | <img src="./screensorts/Admin.png" width="400" alt="Admin panel"/> |
+| <img src="./screensorts/AIInsight.png" width="400" alt="PollVerse AI insights and win probability panel"/> | <img src="./screensorts/Admin.png" width="400" alt="PollVerse admin panel to create polls"/> |
 
 | Cricket Intro | Players Profile |
 |:---:|:---:|
-| <img src="./screensorts/CrickIntro.png" width="400" alt="Cricket intro"/> | <img src="./screensorts/playerProfile.png" width="400" alt="Player profile"/> |
+| <img src="./screensorts/CrickIntro.png" width="400" alt="PollVerse cricket prediction intro"/> | <img src="./screensorts/playerProfile.png" width="400" alt="PollVerse player profile and stats"/> |
 
 </div>
 
@@ -123,6 +129,27 @@ screensorts/
 - 💰 Correct cricket predictions earn the **same credits** as regular polls and count toward the **same leaderboard**
 - 🔔 **Follow your favorite teams** to get notified the moment their match goes live
 - 🏏 Ball-by-ball score updates pushed over the same Socket.IO channel used for poll results
+
+---
+
+## 💡 Why PollVerse.AI?
+
+- **Prediction, not just voting** — most polling tools only count votes; PollVerse rewards you for being right.
+- **Truly real-time** — Socket.IO pushes poll results and cricket scores instantly, with no page refresh.
+- **AI-assisted decisions** — LLM-based insights show win-probability hints before you predict.
+- **One leaderboard for everything** — general polls and live cricket share the same credits and rankings.
+- **No passwords** — quick and secure email OTP login.
+- **Scalable cloud setup** — AWS EC2, DynamoDB, S3 and MongoDB Atlas work together for low latency.
+
+---
+
+## 🎯 Use Cases
+
+- Run a **live opinion poll** for friends, communities, colleges or events
+- Play a **cricket match prediction game** during IPL, World Cup or any live series
+- Build a **prediction leaderboard** for office, classroom or fan groups
+- Learn how to build a **real-time app with React, Node.js, Express, MongoDB and Socket.IO**
+- Use it as a **starter project** for a polling, voting or fantasy-style prediction platform
 
 ---
 
@@ -170,7 +197,13 @@ screensorts/
 
 ## 🚀 Getting Started
 
+**Prerequisites:** Node.js 18+, a MongoDB Atlas connection string, an SMTP email account (for OTP), and a cricket score API key.
+
 ```bash
+# 0. Clone the repository
+git clone https://github.com/your-username/pollverse-ai.git
+cd pollverse-ai
+
 # 1. Install dependencies
 npm run install-all
 
@@ -248,6 +281,28 @@ flowchart LR
 
 ---
 
+## ❓ FAQ
+
+**What is PollVerse.AI?**
+PollVerse.AI is an open-source, real-time polling and prediction platform built with React, Node.js, Express, MongoDB and Socket.IO, with AI insights and live cricket score predictions.
+
+**How does login work in PollVerse?**
+PollVerse uses passwordless email OTP login. You enter your email, receive a 6-digit OTP, and get a JWT-based session once verified.
+
+**How do I earn credits on PollVerse?**
+You earn credits by making correct predictions on polls or live cricket matches. Credits count toward the global leaderboard.
+
+**Does PollVerse support live cricket scores?**
+Yes. The server polls a third-party cricket score API and broadcasts live updates (runs, overs, run rate, status) to all users through Socket.IO.
+
+**Is PollVerse free and open source?**
+Yes, it is released under the MIT License. You can fork, modify and use it in your own projects.
+
+**Which technologies does PollVerse use?**
+React, React Router, GSAP, Express.js, Socket.IO, Mongoose, Nodemailer, JWT, MongoDB Atlas, DynamoDB, AWS EC2, Amazon S3, Cloudinary and GitHub Actions.
+
+---
+
 ## 🗺️ Roadmap
 
 - [ ] 🔔 Web push notifications alongside email
@@ -257,9 +312,27 @@ flowchart LR
 
 ---
 
+## 🤝 Contributing
+
+Contributions are welcome! To contribute to PollVerse.AI:
+
+1. Fork the repository
+2. Create your feature branch: `git checkout -b feature/your-feature`
+3. Commit your changes: `git commit -m "Add your feature"`
+4. Push to the branch: `git push origin feature/your-feature`
+5. Open a Pull Request
+
+---
+
 ## 📄 License
 
 MIT
+
+---
+
+## 🔑 Topics
+
+`pollverse` · `pollverse-ai` · `polling-app` · `online-poll-maker` · `prediction-platform` · `real-time-polling` · `cricket-prediction` · `live-cricket-score` · `mern-stack` · `react` · `nodejs` · `express` · `mongodb` · `socket-io` · `websockets` · `ai-insights` · `leaderboard` · `otp-authentication` · `aws-ec2` · `dynamodb`
 
 ---
 
@@ -270,15 +343,15 @@ MIT
 If you like this project, **star the repo** — it really helps! ⭐
 
 <a href="../../stargazers">
-  <img src="https://img.shields.io/github/stars/your-username/pollverse-ai?style=social" alt="GitHub stars"/>
+  <img src="https://img.shields.io/github/stars/your-username/pollverse-ai?style=social" alt="PollVerse.AI GitHub stars"/>
 </a>
 &nbsp;
 <a href="../../network/members">
-  <img src="https://img.shields.io/github/forks/your-username/pollverse-ai?style=social" alt="GitHub forks"/>
+  <img src="https://img.shields.io/github/forks/your-username/pollverse-ai?style=social" alt="PollVerse.AI GitHub forks"/>
 </a>
 &nbsp;
 <a href="../../watchers">
-  <img src="https://img.shields.io/github/watchers/your-username/pollverse-ai?style=social" alt="GitHub watchers"/>
+  <img src="https://img.shields.io/github/watchers/your-username/pollverse-ai?style=social" alt="PollVerse.AI GitHub watchers"/>
 </a>
 
 <br/><br/>
@@ -287,12 +360,12 @@ If you like this project, **star the repo** — it really helps! ⭐
 
 <br/><br/>
 
-<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&size=18&pause=1200&color=47A248&center=true&vCenter=true&width=500&lines=Thanks+for+checking+out+PollVerse.AI!;Star+%E2%AD%90+%7C+Fork+%F0%9F%8D%B4+%7C+Contribute+%F0%9F%92%BB" alt="thanks typing svg" />
+<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&size=18&pause=1200&color=47A248&center=true&vCenter=true&width=500&lines=Thanks+for+checking+out+PollVerse.AI!;Star+%E2%AD%90+%7C+Fork+%F0%9F%8D%B4+%7C+Contribute+%F0%9F%92%BB" alt="Thanks for checking out PollVerse.AI" />
 
 </div>
 
 <div align="center">
-  <img src="https://capsule-render.vercel.app/api?type=waving&color=0:47A248,100:2EA3F7&height=100&section=footer" width="100%"/>
+  <img src="https://capsule-render.vercel.app/api?type=waving&color=0:47A248,100:2EA3F7&height=100&section=footer" width="100%" alt="PollVerse.AI footer banner"/>
 </div>
 
 <div align="center">
