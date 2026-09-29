@@ -29,7 +29,7 @@
   <img src="https://capsule-render.vercel.app/api?type=waving&color=0:2EA3F7,100:47A248&height=120&section=header" width="100%" alt="PollVerse.AI header banner"/>
 </div>
 
-> **🔗 Live Demo:** _add your deployed PollVerse link here_ &nbsp;|&nbsp; **📦 Repo:** `pollverse-ai` &nbsp;|&nbsp; **👤 Author:** _your name_
+> **🔗 Live Demo:** [_add your deployed PollVerse link here_](https://poll-verse-ai-delta.vercel.app/) &nbsp;|&nbsp; **📦 Repo:** `pollverse-ai` &nbsp;|&nbsp; **👤 Author:**  **Devansh Upadhyay**
 
 ---
 
