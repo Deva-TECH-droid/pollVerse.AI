@@ -172,6 +172,33 @@ router.get('/matches/:id', async (req, res) => {
   try {
     const match = await Match.findById(req.params.id);
     if (!match) return res.status(404).json({ message: 'Match not found' });
+
+    // Enrich match with latest permanent player photos from PlayerProfile
+    const cleanNames = [
+      ...(match.teamA?.players || []),
+      ...(match.teamB?.players || []),
+    ].map((p) => p.trim().toLowerCase()).filter(Boolean);
+
+    if (cleanNames.length > 0) {
+      const profiles = await PlayerProfile.find({ nameNormalized: { $in: cleanNames } });
+      const photoMap = {};
+      profiles.forEach((pr) => {
+        if (pr.photoUrl) photoMap[pr.nameNormalized] = pr.photoUrl;
+      });
+
+      if (!match.teamA.playerPhotos) match.teamA.playerPhotos = {};
+      if (!match.teamB.playerPhotos) match.teamB.playerPhotos = {};
+
+      match.teamA.players.forEach((p) => {
+        const photo = photoMap[p.trim().toLowerCase()];
+        if (photo) match.teamA.playerPhotos[p] = photo;
+      });
+      match.teamB.players.forEach((p) => {
+        const photo = photoMap[p.trim().toLowerCase()];
+        if (photo) match.teamB.playerPhotos[p] = photo;
+      });
+    }
+
     res.json({ match, innings: match.innings.map((inn, i) => buildInningsSummary(match, inn)) });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
@@ -297,9 +324,16 @@ function buildInningsSummary(match, innings) {
     });
   });
 
+  const battingPhotos = match[battingTeamKey]?.playerPhotos || {};
+  const bowlingPhotos = match[bowlingTeamKey]?.playerPhotos || {};
+
   const battingCard = battingPlayers.map((name) => {
     const b = batting[name] || { name, runs: 0, ballsFaced: 0, fours: 0, sixes: 0, isOut: false, outType: '' };
-    return { ...b, strikeRate: b.ballsFaced > 0 ? Math.round((b.runs / b.ballsFaced) * 1000) / 10 : 0 };
+    return {
+      ...b,
+      photoUrl: battingPhotos[name] || '',
+      strikeRate: b.ballsFaced > 0 ? Math.round((b.runs / b.ballsFaced) * 1000) / 10 : 0
+    };
   });
 
   const bowlingCard = Object.values(bowling).map((bl) => {
@@ -309,6 +343,7 @@ function buildInningsSummary(match, innings) {
     const oversAsDecimal = bl.legalBalls / 6;
     return {
       name: bl.name,
+      photoUrl: bowlingPhotos[bl.name] || '',
       overs: `${oversCompleted}.${ballsRemainder}`,
       maidens,
       runsConceded: bl.runsConceded,
@@ -350,7 +385,12 @@ function buildInningsSummary(match, innings) {
     extrasTotal: Object.values(extras).reduce((a, b) => a + b, 0),
     fallOfWickets,
     recentBalls: recentBalls.slice(-6),
-    current: innings.current,
+    current: {
+      ...innings.current,
+      strikerPhoto: battingPhotos[innings.current?.striker] || '',
+      nonStrikerPhoto: battingPhotos[innings.current?.nonStriker] || '',
+      bowlerPhoto: bowlingPhotos[innings.current?.bowler] || '',
+    },
     isComplete: innings.isComplete,
     target: innings.target || null,
     requiredRunRate,
@@ -1095,6 +1135,36 @@ router.post('/players/photo', requireAuth, async (req, res) => {
       { $set: updateData, $setOnInsert: { name: cleanName } },
       { new: true, upsert: true }
     );
+
+    // Propagate permanent photo everywhere across existing matches and tournaments
+    if (photoUrl) {
+      const nameRegex = new RegExp(`^${cleanName}$`, 'i');
+      await Promise.all([
+        Match.updateMany(
+          { 'teamA.players': nameRegex },
+          { $set: { [`teamA.playerPhotos.${cleanName}`]: photoUrl } }
+        ),
+        Match.updateMany(
+          { 'teamB.players': nameRegex },
+          { $set: { [`teamB.playerPhotos.${cleanName}`]: photoUrl } }
+        ),
+        Tournament.updateMany(
+          { 'teams.players.name': nameRegex },
+          { $set: { 'teams.$[].players.$[p].photoUrl': photoUrl } },
+          { arrayFilters: [{ 'p.name': nameRegex }] }
+        ),
+        Tournament.updateMany(
+          { 'auctionPool.name': nameRegex },
+          { $set: { 'auctionPool.$[p].photoUrl': photoUrl } },
+          { arrayFilters: [{ 'p.name': nameRegex }] }
+        ),
+      ]);
+
+      const io = req.app.get('io');
+      if (io) {
+        io.emit('playerPhotoUpdated', { playerName: cleanName, photoUrl });
+      }
+    }
 
     res.json({ success: true, profile });
   } catch (err) {

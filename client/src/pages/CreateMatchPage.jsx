@@ -103,6 +103,19 @@ function PlayerListEditor({
         ...prev,
         [playerName]: data.url,
       }));
+
+      // Persist permanently to PlayerProfile immediately
+      await fetch(`${API_URL}/api/gully-cricket/players/photo`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: playerName.trim(),
+          photoUrl: data.url,
+        }),
+      }).catch((err) => console.warn('Permanent profile sync error:', err));
     } catch (err) {
       setUploadError(err.message);
     } finally {

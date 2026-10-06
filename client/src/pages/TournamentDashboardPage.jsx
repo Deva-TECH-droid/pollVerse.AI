@@ -7,6 +7,8 @@ import '../styles/MatchSummary.css';
 import '../styles/LiveScoring.css';
 import TournamentCelebration from '../components/TournamentCelebration';
 import PlayoffBracket from '../components/PlayoffBracket';
+import PlayerAvatar, { resolvePhotoUrl } from '../components/PlayerAvatar';
+import TournamentAuctionArena from '../components/TournamentAuctionArena';
 
 const API_URL = process.env.REACT_APP_API_URL || '';
 
@@ -14,7 +16,7 @@ function TeamBadge({ team, size = 28, variant = 'a' }) {
   const logo = team?.logo;
   const name = team?.name || '?';
   if (logo) {
-    return <img src={logo} alt={name} className="tr-team-badge-img" style={{ width: size, height: size }} />;
+    return <img src={resolvePhotoUrl(logo)} alt={name} className="tr-team-badge-img" style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover' }} />;
   }
   return (
     <span className={`gc-team-badge ${variant === 'b' ? 'gc-team-badge-b' : ''}`} style={{ width: size, height: size, fontSize: size * 0.35 }}>
@@ -23,35 +25,51 @@ function TeamBadge({ team, size = 28, variant = 'a' }) {
   );
 }
 
-function TeamPlayerEditor({ players, setPlayers }) {
+function TeamPlayerEditor({ players, setPlayers, getToken }) {
   const [draft, setDraft] = useState('');
   const addPlayer = () => {
     const name = draft.trim();
     if (!name) return;
-    setPlayers([...players, name]);
+    setPlayers([...players, { name, role: 'Player', photoUrl: '' }]);
     setDraft('');
   };
   return (
     <div className="gc-player-editor">
       <p className="gc-field-label">Players ({players.length})</p>
       <div className="gc-player-input-row">
-        <input type="text" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Player name"
+        <input type="text" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Player name (e.g. Ram)"
           onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addPlayer())} />
         <button type="button" onClick={addPlayer}>+ Add</button>
       </div>
       <div className="gc-player-chips">
-        {players.map((p, i) => (
-          <span key={i} className="gc-player-chip">
-            {p}
-            <button type="button" onClick={() => setPlayers(players.filter((_, idx) => idx !== i))}>✕</button>
-          </span>
-        ))}
+        {players.map((p, i) => {
+          const pName = typeof p === 'string' ? p : p.name;
+          const pPhoto = typeof p === 'string' ? '' : p.photoUrl;
+          return (
+            <span key={i} className="gc-player-chip" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <PlayerAvatar
+                name={pName}
+                photoUrl={pPhoto}
+                size={22}
+                allowUpload={true}
+                getToken={getToken}
+                onPhotoUploaded={(url) => {
+                  const updated = [...players];
+                  updated[i] = { name: pName, role: 'Player', photoUrl: url };
+                  setPlayers(updated);
+                }}
+              />
+              {pName}
+              <button type="button" onClick={() => setPlayers(players.filter((_, idx) => idx !== i))}>✕</button>
+            </span>
+          );
+        })}
       </div>
     </div>
   );
 }
 
-function AddTeamForm({ tournamentId, onAdded, getToken }) {
+function AddTeamForm({ tournament, tournamentId, onAdded, getToken }) {
   const [name, setName] = useState('');
   const [captain, setCaptain] = useState('');
   const [viceCaptain, setViceCaptain] = useState('');
@@ -59,6 +77,8 @@ function AddTeamForm({ tournamentId, onAdded, getToken }) {
   const [logo, setLogo] = useState('');
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const isAuctionTournament = Boolean(tournament?.hasAuction);
 
   const handleLogoChange = (e) => {
     const file = e.target.files?.[0];
@@ -75,7 +95,7 @@ function AddTeamForm({ tournamentId, onAdded, getToken }) {
   const handleAdd = async () => {
     setError(null);
     if (!name.trim()) return setError('Team name is required.');
-    if (players.length < 2) return setError('Add at least 2 players.');
+    if (!isAuctionTournament && players.length < 2) return setError('Add at least 2 players for this team.');
     setSubmitting(true);
     try {
       const token = await getToken();
@@ -88,8 +108,8 @@ function AddTeamForm({ tournamentId, onAdded, getToken }) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.message || 'Failed to add team');
       }
-      const tournament = await res.json();
-      onAdded(tournament);
+      const updated = await res.json();
+      onAdded(updated);
       setName(''); setCaptain(''); setViceCaptain(''); setPlayers([]); setLogo('');
     } catch (err) {
       setError(err.message);
@@ -100,7 +120,15 @@ function AddTeamForm({ tournamentId, onAdded, getToken }) {
 
   return (
     <div className="gc-form">
-      <p className="gc-field-label" style={{ fontSize: '0.95rem' }}>Add a team</p>
+      <p className="gc-field-label" style={{ fontSize: '0.95rem' }}>
+        {isAuctionTournament ? 'Register a Tournament Franchise / Team' : 'Add a team'}
+      </p>
+
+      {isAuctionTournament && (
+        <div style={{ background: 'rgba(245, 158, 11, 0.12)', border: '1px solid rgba(245, 158, 11, 0.3)', padding: '10px 14px', borderRadius: 8, marginBottom: 16, fontSize: '0.86rem', color: '#fef08a' }}>
+          ⚡ <strong>Auction Tournament:</strong> Register your teams here. Official player squads will be bid on and purchased in the <strong>Player Auction Arena</strong>!
+        </div>
+      )}
 
       <div className="gc-form-field">
         <label className="gc-field-label">Team Logo (optional)</label>
@@ -126,15 +154,19 @@ function AddTeamForm({ tournamentId, onAdded, getToken }) {
       </div>
       <div className="gc-form-row">
         <div className="gc-form-field">
-          <label className="gc-field-label">Captain</label>
+          <label className="gc-field-label">Captain (optional)</label>
           <input type="text" value={captain} onChange={(e) => setCaptain(e.target.value)} />
         </div>
         <div className="gc-form-field">
-          <label className="gc-field-label">Vice Captain</label>
+          <label className="gc-field-label">Vice Captain (optional)</label>
           <input type="text" value={viceCaptain} onChange={(e) => setViceCaptain(e.target.value)} />
         </div>
       </div>
-      <TeamPlayerEditor players={players} setPlayers={setPlayers} />
+
+      {!isAuctionTournament && (
+        <TeamPlayerEditor players={players} setPlayers={setPlayers} getToken={getToken} />
+      )}
+
       {error && <p className="gc-error">⚠️ {error}</p>}
       <button type="button" className="gc-submit-btn" onClick={handleAdd} disabled={submitting}>
         {submitting ? 'Adding...' : '+ Add Team'}
@@ -343,7 +375,14 @@ function TournamentDashboardPage() {
       {tournament.status === 'setup' && (
         <>
           <div className="tr-teams-progress">
-            <p>Teams added: <strong>{tournament.teams.length} / {tournament.numberOfTeams}</strong></p>
+            <p>
+              Teams registered: <strong>{tournament.teams.length} / {tournament.numberOfTeams}</strong>
+              {tournament.hasAuction && (
+                <span style={{ marginLeft: 12, color: '#f59e0b', fontWeight: 700 }}>
+                  🔨 Auction Enabled {tournament.auctionConfig?.status === 'completed' ? '(Squads Finalized)' : ''}
+                </span>
+              )}
+            </p>
           </div>
 
           {tournament.teams.length > 0 && (
@@ -355,17 +394,69 @@ function TournamentDashboardPage() {
                     <p className="tr-team-name">{t.name}</p>
                   </div>
                   {t.captain && <p className="tr-team-meta">👑 {t.captain}{t.viceCaptain ? ` · 🥈 ${t.viceCaptain}` : ''}</p>}
-                  <p className="tr-team-meta">{t.players.length} players</p>
+                  {tournament.hasAuction && (
+                    <p className="tr-team-meta" style={{ color: '#10b981', fontWeight: 700 }}>
+                      💰 Purse: ₹{Number(t.budget).toFixed(2)} Cr
+                    </p>
+                  )}
+                  <p className="tr-team-meta">
+                    {t.players.length} player{t.players.length === 1 ? '' : 's'}
+                  </p>
+
+                  {/* Player squad avatars with permanent photo & upload capability */}
+                  {t.players.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                      {t.players.map((p) => (
+                        <div
+                          key={p.name}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            background: 'rgba(255,255,255,0.06)',
+                            padding: '3px 8px',
+                            borderRadius: 14,
+                            fontSize: '0.76rem',
+                          }}
+                        >
+                          <PlayerAvatar
+                            name={p.name}
+                            photoUrl={p.photoUrl}
+                            size={20}
+                            allowUpload={true}
+                            getToken={getToken}
+                            onPhotoUploaded={(url) => {
+                              p.photoUrl = url;
+                              setTournament({ ...tournament });
+                            }}
+                          />
+                          <span>{p.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
           )}
 
-          {teamsRemaining > 0 ? (
-            <AddTeamForm tournamentId={id} onAdded={setTournament} getToken={getToken} />
+          {/* ── COMPLETE IPL AUCTION FLOW ─────────────────────────────────── */}
+          {tournament.hasAuction && tournament.auctionConfig?.status !== 'completed' ? (
+            <div style={{ marginTop: 20 }}>
+              <TournamentAuctionArena
+                tournament={tournament}
+                onUpdate={setTournament}
+                onFinalized={(updatedTourn) => setTournament(updatedTourn)}
+                getToken={getToken}
+              />
+            </div>
+          ) : teamsRemaining > 0 ? (
+            <AddTeamForm tournament={tournament} tournamentId={id} onAdded={setTournament} getToken={getToken} />
           ) : (
             <div className="gc-placeholder" style={{ textAlign: 'center' }}>
-              <p style={{ marginBottom: 14 }}>All {tournament.numberOfTeams} teams are in! Ready to generate the schedule.</p>
+              <p style={{ marginBottom: 14 }}>
+                All {tournament.numberOfTeams} teams and squads are confirmed! Ready to generate the schedule.
+              </p>
               <button className="gc-submit-btn" onClick={handleGenerateFixtures} disabled={generating}>
                 {generating ? 'Generating...' : '📅 Generate Fixtures'}
               </button>

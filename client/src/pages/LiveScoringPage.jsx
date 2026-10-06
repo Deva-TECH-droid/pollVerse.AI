@@ -4,6 +4,7 @@ import { useAuth, useUser } from '@clerk/clerk-react';
 import socket from '../socket';
 import { useStreamContext } from '../context/StreamContext';
 import PlayerAIComparisonModal from '../components/PlayerAIComparisonModal';
+import PlayerAvatar from '../components/PlayerAvatar';
 import '../styles/GullyCricket.css';
 import '../styles/LiveScoring.css';
 
@@ -446,6 +447,17 @@ function LiveScoringPage() {
     };
     socket.on('matchStreamUpdate', handleStreamUpdate);
 
+    const handlePhotoUpdated = ({ playerName, photoUrl }) => {
+      setMatch((prev) => {
+        if (!prev) return prev;
+        const copy = { ...prev };
+        if (copy.teamA?.playerPhotos) copy.teamA.playerPhotos = { ...copy.teamA.playerPhotos, [playerName]: photoUrl };
+        if (copy.teamB?.playerPhotos) copy.teamB.playerPhotos = { ...copy.teamB.playerPhotos, [playerName]: photoUrl };
+        return copy;
+      });
+    };
+    socket.on('playerPhotoUpdated', handlePhotoUpdated);
+
     const handleScoreUpdate = ({ matchId, match: updatedMatch, innings: updatedInnings, seq }) => {
       if (String(matchId) === String(id) || String(updatedMatch?._id) === String(id)) {
         if (seq && seq < lastSeqRef.current) return;
@@ -461,6 +473,7 @@ function LiveScoringPage() {
 
     return () => {
       socket.emit('leaveMatchViewer');
+      socket.off('playerPhotoUpdated', handlePhotoUpdated);
       socket.off('viewerCountUpdate', handleViewerUpdate);
       socket.off('matchStreamUpdate', handleStreamUpdate);
       socket.off('matchScoreUpdate', handleScoreUpdate);
@@ -797,26 +810,87 @@ function LiveScoringPage() {
               <>
                 <div className="ls-batters-row">
                   <div className="ls-batter-card">
-                    <p className="ls-batter-name">⭐ {lastInnings.current.striker}</p>
-                    <p className="ls-batter-stats">
-                      {lastInnings.battingCard.find((b) => b.name === lastInnings.current.striker)?.runs || 0} (
-                      {lastInnings.battingCard.find((b) => b.name === lastInnings.current.striker)?.ballsFaced || 0})
-                    </p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <PlayerAvatar
+                        name={lastInnings.current.striker}
+                        photoUrl={
+                          lastInnings.current.strikerPhoto ||
+                          match[lastInnings.battingTeam]?.playerPhotos?.[lastInnings.current.striker]
+                        }
+                        size={40}
+                        allowUpload={isCreator}
+                        getToken={getToken}
+                        onPhotoUploaded={(url) => {
+                          if (match && match[lastInnings.battingTeam]?.playerPhotos) {
+                            match[lastInnings.battingTeam].playerPhotos[lastInnings.current.striker] = url;
+                            setMatch({ ...match });
+                          }
+                        }}
+                      />
+                      <div>
+                        <p className="ls-batter-name">⭐ {lastInnings.current.striker}</p>
+                        <p className="ls-batter-stats">
+                          {lastInnings.battingCard.find((b) => b.name === lastInnings.current.striker)?.runs || 0} (
+                          {lastInnings.battingCard.find((b) => b.name === lastInnings.current.striker)?.ballsFaced || 0})
+                        </p>
+                      </div>
+                    </div>
                   </div>
                   <div className="ls-batter-card">
-                    <p className="ls-batter-name">{lastInnings.current.nonStriker}</p>
-                    <p className="ls-batter-stats">
-                      {lastInnings.battingCard.find((b) => b.name === lastInnings.current.nonStriker)?.runs || 0} (
-                      {lastInnings.battingCard.find((b) => b.name === lastInnings.current.nonStriker)?.ballsFaced || 0})
-                    </p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <PlayerAvatar
+                        name={lastInnings.current.nonStriker}
+                        photoUrl={
+                          lastInnings.current.nonStrikerPhoto ||
+                          match[lastInnings.battingTeam]?.playerPhotos?.[lastInnings.current.nonStriker]
+                        }
+                        size={40}
+                        allowUpload={isCreator}
+                        getToken={getToken}
+                        onPhotoUploaded={(url) => {
+                          if (match && match[lastInnings.battingTeam]?.playerPhotos) {
+                            match[lastInnings.battingTeam].playerPhotos[lastInnings.current.nonStriker] = url;
+                            setMatch({ ...match });
+                          }
+                        }}
+                      />
+                      <div>
+                        <p className="ls-batter-name">{lastInnings.current.nonStriker}</p>
+                        <p className="ls-batter-stats">
+                          {lastInnings.battingCard.find((b) => b.name === lastInnings.current.nonStriker)?.runs || 0} (
+                          {lastInnings.battingCard.find((b) => b.name === lastInnings.current.nonStriker)?.ballsFaced || 0})
+                        </p>
+                      </div>
+                    </div>
                   </div>
                   <div className="ls-batter-card ls-bowler-card">
-                    <p className="ls-batter-name">🎯 {lastInnings.current.bowler || stashedBowler || '—'}</p>
-                    <p className="ls-batter-stats">
-                      {lastInnings.bowlingCard.find((b) => b.name === lastInnings.current.bowler)?.overs || '0.0'} ov ·{' '}
-                      {lastInnings.bowlingCard.find((b) => b.name === lastInnings.current.bowler)?.wickets || 0}/
-                      {lastInnings.bowlingCard.find((b) => b.name === lastInnings.current.bowler)?.runsConceded || 0}
-                    </p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <PlayerAvatar
+                        name={lastInnings.current.bowler || stashedBowler}
+                        photoUrl={
+                          lastInnings.current.bowlerPhoto ||
+                          match[lastInnings.bowlingTeam]?.playerPhotos?.[lastInnings.current.bowler || stashedBowler]
+                        }
+                        size={40}
+                        allowUpload={isCreator}
+                        getToken={getToken}
+                        onPhotoUploaded={(url) => {
+                          const bName = lastInnings.current.bowler || stashedBowler;
+                          if (match && match[lastInnings.bowlingTeam]?.playerPhotos && bName) {
+                            match[lastInnings.bowlingTeam].playerPhotos[bName] = url;
+                            setMatch({ ...match });
+                          }
+                        }}
+                      />
+                      <div>
+                        <p className="ls-batter-name">🎯 {lastInnings.current.bowler || stashedBowler || '—'}</p>
+                        <p className="ls-batter-stats">
+                          {lastInnings.bowlingCard.find((b) => b.name === lastInnings.current.bowler)?.overs || '0.0'} ov ·{' '}
+                          {lastInnings.bowlingCard.find((b) => b.name === lastInnings.current.bowler)?.wickets || 0}/
+                          {lastInnings.bowlingCard.find((b) => b.name === lastInnings.current.bowler)?.runsConceded || 0}
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
 

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import PlayerAvatar from '../components/PlayerAvatar';
 import '../styles/GullyCricket.css';
 import '../styles/LiveScoring.css';
 import '../styles/MatchSummary.css';
@@ -152,8 +153,13 @@ function InningsSummary({ innings, matchOvers }) {
             {innings.battingCard.map((b) => (
               <tr key={b.name}>
                 <td>
-                  <div className="ms-batter-name">{b.name}</div>
-                  <div className="ms-out-type">{b.isOut ? b.outType : (b.ballsFaced > 0 ? 'not out' : 'did not bat')}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <PlayerAvatar name={b.name} photoUrl={b.photoUrl} size={28} />
+                    <div>
+                      <div className="ms-batter-name">{b.name}</div>
+                      <div className="ms-out-type">{b.isOut ? b.outType : (b.ballsFaced > 0 ? 'not out' : 'did not bat')}</div>
+                    </div>
+                  </div>
                 </td>
                 <td className="ms-num">{b.runs}</td>
                 <td className="ms-num">{b.ballsFaced}</td>
@@ -181,7 +187,12 @@ function InningsSummary({ innings, matchOvers }) {
               <tbody>
                 {innings.bowlingCard.map((b) => (
                   <tr key={b.name}>
-                    <td>{b.name}</td>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <PlayerAvatar name={b.name} photoUrl={b.photoUrl} size={28} />
+                        <span>{b.name}</span>
+                      </div>
+                    </td>
                     <td className="ms-num">{b.overs}</td>
                     <td className="ms-num">{b.maidens}</td>
                     <td className="ms-num">{b.runsConceded}</td>
@@ -324,6 +335,9 @@ function MatchSummaryPage() {
               if (!award) return null;
               return (
                 <div key={key} className="ms-award-card">
+                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
+                    <PlayerAvatar name={award.name} size={50} variant="cutout" />
+                  </div>
                   <span className="ms-award-icon">{meta.icon}</span>
                   <p className="ms-award-label">{meta.label}</p>
                   <p className="ms-award-name">{award.name}</p>

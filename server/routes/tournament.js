@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const Tournament = require('../models/Tournament');
 const Match = require('../models/Match');
+const PlayerProfile = require('../models/PlayerProfile');
+const TeamProfile = require('../models/TeamProfile');
 const { generateMatchHighlights } = require('../utils/highlights');
 const { requireAuth } = require('../middleware/auth');
 
@@ -11,6 +13,7 @@ router.post('/', requireAuth, async (req, res) => {
       name, startDate, endDate, numberOfTeams, oversPerMatch, format,
       venue, ballType, playersPerTeam, logo, organizerName, description,
       rules, registrationDeadline,
+      hasAuction, auctionConfig, auctionPool, teams,
     } = req.body;
 
     if (!name?.trim()) return res.status(400).json({ message: 'Tournament name is required.' });
@@ -18,6 +21,16 @@ router.post('/', requireAuth, async (req, res) => {
     if (new Date(endDate) <= new Date(startDate)) return res.status(400).json({ message: 'End date must be after the start date.' });
     if (!numberOfTeams || numberOfTeams < 2) return res.status(400).json({ message: 'At least 2 teams are required.' });
     if (!oversPerMatch || oversPerMatch < 1) return res.status(400).json({ message: 'Overs per match is required.' });
+
+    const initialTeams = Array.isArray(teams) && teams.length > 0 ? teams.map((t) => ({
+      name: (t.name || '').trim(),
+      captain: t.captain || '',
+      viceCaptain: t.viceCaptain || '',
+      logo: t.logo || '',
+      budget: t.budget !== undefined ? Number(t.budget) : (auctionConfig?.budgetPerTeam || 100),
+      isUserTeam: Boolean(t.isUserTeam),
+      players: Array.isArray(t.players) ? t.players : [],
+    })).filter((t) => Boolean(t.name)) : [];
 
     const tournament = await Tournament.create({
       name: name.trim(),
@@ -34,6 +47,17 @@ router.post('/', requireAuth, async (req, res) => {
       description: description || '',
       rules: rules || '',
       registrationDeadline: registrationDeadline || null,
+      hasAuction: Boolean(hasAuction),
+      auctionConfig: {
+        budgetPerTeam: 100,
+        minPlayersPerTeam: 2,
+        maxPlayersPerTeam: 25,
+        bidIncrement: 0.25,
+        status: 'setup',
+        ...(auctionConfig || {}),
+      },
+      auctionPool: Array.isArray(auctionPool) ? auctionPool : [],
+      teams: initialTeams,
       createdBy: {
         userId: req.user._id,
         email: req.user.email,
@@ -63,8 +87,41 @@ router.get('/:id', async (req, res) => {
     const tournament = await Tournament.findById(req.params.id);
     if (!tournament) return res.status(404).json({ message: 'Tournament not found' });
 
+    // Look up permanent player profiles for all players across teams and auction pool to ensure latest photos
+    const allPlayerNames = [];
+    tournament.teams.forEach((t) => {
+      t.players.forEach((p) => {
+        if (p.name) allPlayerNames.push(p.name.trim().toLowerCase());
+      });
+    });
+    if (tournament.auctionPool) {
+      tournament.auctionPool.forEach((p) => {
+        if (p.name) allPlayerNames.push(p.name.trim().toLowerCase());
+      });
+    }
+
+    const playerProfiles = await PlayerProfile.find({ nameNormalized: { $in: allPlayerNames } });
+    const profileMap = {};
+    playerProfiles.forEach((prof) => {
+      profileMap[prof.nameNormalized] = prof;
+    });
+
+    const tournObj = tournament.toObject();
+    tournObj.teams.forEach((t) => {
+      t.players.forEach((p) => {
+        const prof = profileMap[p.name?.trim().toLowerCase()];
+        if (prof?.photoUrl) p.photoUrl = prof.photoUrl;
+      });
+    });
+    if (tournObj.auctionPool) {
+      tournObj.auctionPool.forEach((p) => {
+        const prof = profileMap[p.name?.trim().toLowerCase()];
+        if (prof?.photoUrl) p.photoUrl = prof.photoUrl;
+      });
+    }
+
     const pointsTable = tournament.status !== 'setup' ? await computePointsTable(tournament) : [];
-    res.json({ ...tournament.toObject(), pointsTable });
+    res.json({ ...tournObj, pointsTable });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
@@ -74,12 +131,9 @@ router.get('/:id', async (req, res) => {
 // tournament.numberOfTeams is reached.
 router.post('/:id/teams', requireAuth, async (req, res) => {
   try {
-    const { name, captain, viceCaptain, players, logo } = req.body;
+    const { name, captain, viceCaptain, players, logo, budget } = req.body;
 
     if (!name?.trim()) return res.status(400).json({ message: 'Team name is required.' });
-    if (!Array.isArray(players) || players.length < 2) {
-      return res.status(400).json({ message: 'A team needs at least 2 players.' });
-    }
 
     const tournament = await Tournament.findById(req.params.id);
     if (!tournament) return res.status(404).json({ message: 'Tournament not found' });
@@ -91,18 +145,59 @@ router.post('/:id/teams', requireAuth, async (req, res) => {
       return res.status(400).json({ message: 'A team with this name already exists in this tournament.' });
     }
 
-    tournament.teams.push({
-      name: name.trim(),
-      captain: captain || '',
-      viceCaptain: viceCaptain || '',
-      logo: logo || '',
-      players: players.map((p) => ({
-        name: (typeof p === 'string' ? p : p.name || '').trim(),
+    const teamPlayersList = Array.isArray(players) ? players : [];
+    // If NOT an auction tournament, require at least 2 players
+    if (!tournament.hasAuction && teamPlayersList.length < 2) {
+      return res.status(400).json({ message: 'A team needs at least 2 players.' });
+    }
+
+    // Process players and their permanent photos
+    const mappedPlayers = [];
+    for (const p of teamPlayersList) {
+      const pName = (typeof p === 'string' ? p : p.name || '').trim();
+      if (!pName) continue;
+      let photo = typeof p === 'object' ? p.photoUrl || '' : '';
+      if (photo) {
+        await PlayerProfile.findOneAndUpdate(
+          { nameNormalized: pName.toLowerCase() },
+          { $set: { photoUrl: photo, displayName: pName, teamName: name.trim() }, $setOnInsert: { name: pName } },
+          { upsert: true }
+        );
+      } else {
+        const existing = await PlayerProfile.findOne({ nameNormalized: pName.toLowerCase() });
+        if (existing?.photoUrl) photo = existing.photoUrl;
+      }
+      mappedPlayers.push({
+        name: pName,
         role: typeof p === 'object' ? p.role || '' : '',
         battingStyle: typeof p === 'object' ? p.battingStyle || '' : '',
         bowlingStyle: typeof p === 'object' ? p.bowlingStyle || '' : '',
         jerseyNumber: typeof p === 'object' ? p.jerseyNumber || null : null,
-      })),
+        photoUrl: photo,
+      });
+    }
+
+    let teamLogo = (logo || '').trim();
+    if (teamLogo) {
+      await TeamProfile.findOneAndUpdate(
+        { nameNormalized: name.trim().toLowerCase() },
+        { $set: { logoUrl: teamLogo, displayName: name.trim() }, $setOnInsert: { name: name.trim() } },
+        { upsert: true }
+      );
+    } else {
+      const existingTeam = await TeamProfile.findOne({ nameNormalized: name.trim().toLowerCase() });
+      if (existingTeam?.logoUrl) teamLogo = existingTeam.logoUrl;
+    }
+
+    const teamBudget = budget !== undefined ? Number(budget) : (tournament.auctionConfig?.budgetPerTeam || 100);
+
+    tournament.teams.push({
+      name: name.trim(),
+      captain: captain || '',
+      viceCaptain: viceCaptain || '',
+      logo: teamLogo,
+      budget: teamBudget,
+      players: mappedPlayers,
     });
 
     await tournament.save();
@@ -254,9 +349,41 @@ router.post('/:id/fixtures/:matchNumber/start', requireAuth, async (req, res) =>
     const battingTeam = tossDecision === 'bat' ? winner : loser;
     const bowlingTeam = battingTeam === 'teamA' ? 'teamB' : 'teamA';
 
+    const cleanA = teamA.players.map((p) => p.name.trim()).filter(Boolean);
+    const cleanB = teamB.players.map((p) => p.name.trim()).filter(Boolean);
+
+    // Look up permanent player photos from PlayerProfile
+    const allMatchPlayers = [...cleanA, ...cleanB].map((n) => n.toLowerCase());
+    const profiles = await PlayerProfile.find({ nameNormalized: { $in: allMatchPlayers } });
+    const profilePhotoMap = {};
+    profiles.forEach((pr) => {
+      if (pr.photoUrl) profilePhotoMap[pr.nameNormalized] = pr.photoUrl;
+    });
+
+    const photosA = {};
+    teamA.players.forEach((p) => {
+      const normalized = p.name.trim().toLowerCase();
+      photosA[p.name.trim()] = profilePhotoMap[normalized] || p.photoUrl || '';
+    });
+    const photosB = {};
+    teamB.players.forEach((p) => {
+      const normalized = p.name.trim().toLowerCase();
+      photosB[p.name.trim()] = profilePhotoMap[normalized] || p.photoUrl || '';
+    });
+
     const match = await Match.create({
-      teamA: { name: teamA.name, players: teamA.players.map((p) => p.name) },
-      teamB: { name: teamB.name, players: teamB.players.map((p) => p.name) },
+      teamA: {
+        name: teamA.name,
+        logoUrl: teamA.logo || '',
+        players: cleanA,
+        playerPhotos: photosA,
+      },
+      teamB: {
+        name: teamB.name,
+        logoUrl: teamB.logo || '',
+        players: cleanB,
+        playerPhotos: photosB,
+      },
       overs: tournament.oversPerMatch,
       tossWonBy,
       tossDecision,
@@ -1002,6 +1129,395 @@ router.get('/:id/highlights', async (req, res) => {
     allHighlights.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
 
     res.json({ tournamentId: tournament._id, tournamentName: tournament.name, highlights: allHighlights });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// AUCTION ENDPOINTS
+// ---------------------------------------------------------------------------
+
+// Add player(s) to tournament auction pool
+router.post('/:id/auction/pool', requireAuth, async (req, res) => {
+  try {
+    const tournament = await Tournament.findById(req.params.id);
+    if (!tournament) return res.status(404).json({ message: 'Tournament not found' });
+    if (tournament.auctionConfig?.status === 'completed') {
+      return res.status(400).json({ message: 'Auction is already completed.' });
+    }
+
+    const { players = [] } = req.body;
+    const playerList = Array.isArray(players) ? players : [req.body];
+
+    for (const p of playerList) {
+      const name = (p.name || '').trim();
+      if (!name) continue;
+
+      let photo = p.photoUrl || '';
+      if (photo) {
+        await PlayerProfile.findOneAndUpdate(
+          { nameNormalized: name.toLowerCase() },
+          {
+            $set: { photoUrl: photo, displayName: name, role: p.role || 'All-Rounder' },
+            $setOnInsert: { name },
+          },
+          { upsert: true }
+        );
+      } else {
+        const existing = await PlayerProfile.findOne({ nameNormalized: name.toLowerCase() });
+        if (existing?.photoUrl) photo = existing.photoUrl;
+      }
+
+      const playerId = p.id || `auc_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+      tournament.auctionPool.push({
+        id: playerId,
+        name,
+        role: p.role || 'All-Rounder',
+        category: p.category || 'All',
+        country: p.country || 'India',
+        basePrice: p.basePrice !== undefined ? Number(p.basePrice) : 1.0,
+        soldPrice: 0,
+        soldTo: null,
+        status: 'pending',
+        photoUrl: photo,
+        stats: p.stats || {},
+      });
+    }
+
+    await tournament.save();
+    res.json(tournament);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// Remove a player from the auction pool
+router.delete('/:id/auction/pool/:playerId', requireAuth, async (req, res) => {
+  try {
+    const tournament = await Tournament.findById(req.params.id);
+    if (!tournament) return res.status(404).json({ message: 'Tournament not found' });
+    if (tournament.auctionConfig?.status === 'completed') {
+      return res.status(400).json({ message: 'Auction is already completed.' });
+    }
+
+    tournament.auctionPool = tournament.auctionPool.filter(
+      (p) => String(p.id) !== String(req.params.playerId) && String(p._id) !== String(req.params.playerId)
+    );
+
+    await tournament.save();
+    res.json(tournament);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// Sell / Mark Unsold an auction player
+router.post('/:id/auction/sell', requireAuth, async (req, res) => {
+  try {
+    const tournament = await Tournament.findById(req.params.id);
+    if (!tournament) return res.status(404).json({ message: 'Tournament not found' });
+
+    const { playerId, sold, soldTo, soldPrice } = req.body;
+    const player = tournament.auctionPool.find(
+      (p) => String(p.id) === String(playerId) || String(p._id) === String(playerId)
+    );
+    if (!player) return res.status(404).json({ message: 'Player not found in auction pool' });
+
+    if (sold) {
+      const price = Number(soldPrice) || player.basePrice;
+      const team = tournament.teams.find((t) => t.name.toLowerCase() === (soldTo || '').trim().toLowerCase());
+      if (!team) return res.status(400).json({ message: `Team ${soldTo} not found` });
+
+      if (team.budget < price) {
+        return res.status(400).json({ message: `${team.name} has insufficient budget for this bid` });
+      }
+
+      player.status = 'sold';
+      player.soldTo = team.name;
+      player.soldPrice = price;
+
+      team.budget = Math.max(0, Math.round((team.budget - price) * 100) / 100);
+
+      tournament.auctionHistory.push({
+        type: 'sold',
+        playerId: player.id || player._id,
+        playerName: player.name,
+        price,
+        teamName: team.name,
+        photoUrl: player.photoUrl,
+        timestamp: new Date(),
+      });
+    } else {
+      player.status = 'unsold';
+      player.soldTo = null;
+      player.soldPrice = 0;
+
+      tournament.auctionHistory.push({
+        type: 'unsold',
+        playerId: player.id || player._id,
+        playerName: player.name,
+        price: player.basePrice,
+        timestamp: new Date(),
+      });
+    }
+
+    tournament.auctionConfig.status = 'in_progress';
+    await tournament.save();
+
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('tournamentAuctionUpdated', { tournamentId: tournament._id, player, history: tournament.auctionHistory });
+    }
+
+    res.json(tournament);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// Finalize auction and confirm official tournament squads
+router.post('/:id/auction/finalize', requireAuth, async (req, res) => {
+  try {
+    const tournament = await Tournament.findById(req.params.id);
+    if (!tournament) return res.status(404).json({ message: 'Tournament not found' });
+
+    // Assign purchased players from auction pool directly to each team's official squad
+    for (const team of tournament.teams) {
+      const purchasedPlayers = tournament.auctionPool.filter(
+        (p) => p.status === 'sold' && p.soldTo && p.soldTo.toLowerCase() === team.name.toLowerCase()
+      );
+
+      // Preserve any retained players or replace with auction results
+      const existingNames = new Set(team.players.map((p) => p.name.toLowerCase()));
+      for (const p of purchasedPlayers) {
+        if (!existingNames.has(p.name.toLowerCase())) {
+          team.players.push({
+            name: p.name,
+            role: p.role || 'All-Rounder',
+            photoUrl: p.photoUrl || '',
+            price: p.soldPrice || p.basePrice || 0,
+          });
+          existingNames.add(p.name.toLowerCase());
+        }
+
+        // Permanently persist to PlayerProfile with teamName
+        await PlayerProfile.findOneAndUpdate(
+          { nameNormalized: p.name.toLowerCase() },
+          {
+            $set: {
+              photoUrl: p.photoUrl || '',
+              teamName: team.name,
+              displayName: p.name,
+              role: p.role || 'All-Rounder',
+            },
+            $setOnInsert: { name: p.name },
+          },
+          { upsert: true }
+        );
+      }
+    }
+
+    tournament.auctionConfig.status = 'completed';
+    tournament.status = 'setup'; // Ready for fixture generation in normal flow
+
+    await tournament.save();
+
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('tournamentAuctionCompleted', { tournamentId: tournament._id });
+    }
+
+    res.json(tournament);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// Helper for AI analysis of auctioned teams
+function generateAITeamAnalysis(tournament) {
+  const analysis = [];
+  for (const team of tournament.teams) {
+    const purchased = (tournament.auctionPool || []).filter(
+      (p) => p.status === 'sold' && p.soldTo && p.soldTo.toLowerCase() === team.name.toLowerCase()
+    );
+    const squad = team.players && team.players.length > 0 ? team.players : purchased;
+
+    const batters = squad.filter((p) => /bat/i.test(p.role)).length;
+    const bowlers = squad.filter((p) => /bowl/i.test(p.role)).length;
+    const allRounders = squad.filter((p) => /all/i.test(p.role)).length;
+    const keepers = squad.filter((p) => /keep|wk/i.test(p.role)).length;
+
+    const totalSpent = purchased.reduce((acc, p) => acc + (p.soldPrice || 0), 0);
+    const marqueePlayer = [...purchased].sort((a, b) => (b.soldPrice || 0) - (a.soldPrice || 0))[0] || null;
+
+    let balanceScore = 7.0;
+    if (batters >= 2 && bowlers >= 2) balanceScore += 1.2;
+    if (allRounders >= 1) balanceScore += 0.8;
+    if (keepers >= 1) balanceScore += 0.5;
+    if (squad.length >= 4) balanceScore += 0.5;
+    balanceScore = Math.min(9.9, Math.round(balanceScore * 10) / 10);
+
+    let verdict = 'Well-structured squad with great tactical depth.';
+    if (batters >= bowlers && batters >= 3) {
+      verdict = 'Heavy batting lineup capable of posting massive totals.';
+    } else if (bowlers > batters) {
+      verdict = 'Formidable bowling unit with lethal wicket-taking firepower.';
+    } else if (allRounders >= 2) {
+      verdict = 'Dynamic all-round squad with seamless bat & ball transition.';
+    }
+
+    analysis.push({
+      teamName: team.name,
+      logo: team.logo,
+      totalPlayers: squad.length,
+      batters,
+      bowlers,
+      allRounders,
+      keepers,
+      totalSpent: Math.round(totalSpent * 100) / 100,
+      remainingPurse: team.budget,
+      marqueePlayer: marqueePlayer ? { name: marqueePlayer.name, price: marqueePlayer.soldPrice, role: marqueePlayer.role } : null,
+      balanceScore,
+      verdict,
+    });
+  }
+  return analysis;
+}
+
+// Get AI Team Analysis for tournament
+router.get('/:id/auction/ai-analysis', async (req, res) => {
+  try {
+    const tournament = await Tournament.findById(req.params.id);
+    if (!tournament) return res.status(404).json({ message: 'Tournament not found' });
+    const analysis = generateAITeamAnalysis(tournament);
+    res.json(analysis);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// Finish Auction: Finalize squads, run AI analysis, generate fixtures, start league
+router.post('/:id/auction/finish', requireAuth, async (req, res) => {
+  try {
+    const tournament = await Tournament.findById(req.params.id);
+    if (!tournament) return res.status(404).json({ message: 'Tournament not found' });
+
+    // 1. Assign purchased players directly into official team squads
+    for (const team of tournament.teams) {
+      const purchasedPlayers = tournament.auctionPool.filter(
+        (p) => p.status === 'sold' && p.soldTo && p.soldTo.toLowerCase() === team.name.toLowerCase()
+      );
+
+      const existingNames = new Set(team.players.map((p) => p.name.toLowerCase()));
+      for (const p of purchasedPlayers) {
+        if (!existingNames.has(p.name.toLowerCase())) {
+          team.players.push({
+            name: p.name,
+            role: p.role || 'All-Rounder',
+            photoUrl: p.photoUrl || '',
+            price: p.soldPrice || p.basePrice || 0,
+          });
+          existingNames.add(p.name.toLowerCase());
+        }
+
+        // Persist photo and team to PlayerProfile
+        await PlayerProfile.findOneAndUpdate(
+          { nameNormalized: p.name.toLowerCase() },
+          {
+            $set: {
+              photoUrl: p.photoUrl || '',
+              teamName: team.name,
+              displayName: p.name,
+              role: p.role || 'All-Rounder',
+            },
+            $setOnInsert: { name: p.name },
+          },
+          { upsert: true }
+        );
+      }
+    }
+
+    tournament.auctionConfig.status = 'completed';
+
+    // 2. Automatically generate fixtures if ready & not already generated
+    if (tournament.fixtures.length === 0 && tournament.teams.length >= 2) {
+      const teamNames = tournament.teams.map((t) => t.name);
+      const rounds = generateRoundRobinRounds(teamNames);
+      const allMatches = rounds.flat();
+
+      const start = new Date(tournament.startDate);
+      const end = new Date(tournament.endDate);
+      const totalDays = Math.max(Math.floor((end - start) / (1000 * 60 * 60 * 24)), 1);
+
+      const fixtures = allMatches.map((m, i) => {
+        const dayOffset = allMatches.length > 1 ? Math.round((i / (allMatches.length - 1)) * totalDays) : 0;
+        const scheduledDate = new Date(start.getTime() + dayOffset * 24 * 60 * 60 * 1000);
+        let roundIndex = 0;
+        let counted = 0;
+        for (let r = 0; r < rounds.length; r++) {
+          if (i < counted + rounds[r].length) {
+            roundIndex = r;
+            break;
+          }
+          counted += rounds[r].length;
+        }
+        return {
+          matchNumber: i + 1,
+          round: roundIndex + 1,
+          teamAName: m.teamA,
+          teamBName: m.teamB,
+          scheduledDate,
+          stage: 'league',
+          status: 'scheduled',
+        };
+      });
+
+      tournament.fixtures = fixtures;
+      tournament.status = 'league';
+    }
+
+    await tournament.save();
+
+    const aiAnalysis = generateAITeamAnalysis(tournament);
+
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('tournamentAuctionCompleted', { tournamentId: tournament._id, tournament });
+      io.emit('tournamentFixturesGenerated', { tournamentId: tournament._id });
+    }
+
+    const pointsTable = tournament.status !== 'setup' ? await computePointsTable(tournament) : [];
+    res.json({ tournament: { ...tournament.toObject(), pointsTable }, aiAnalysis });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
+// Reset auction if organizer wants to rerun the auction
+router.post('/:id/auction/reset', requireAuth, async (req, res) => {
+  try {
+    const tournament = await Tournament.findById(req.params.id);
+    if (!tournament) return res.status(404).json({ message: 'Tournament not found' });
+
+    const defaultBudget = tournament.auctionConfig?.budgetPerTeam || 100;
+    tournament.teams.forEach((t) => {
+      t.budget = defaultBudget;
+      // Clear auction bought players, keep captain/viceCaptain if needed
+      t.players = [];
+    });
+
+    tournament.auctionPool.forEach((p) => {
+      p.status = 'pending';
+      p.soldTo = null;
+      p.soldPrice = 0;
+    });
+
+    tournament.auctionHistory = [];
+    tournament.auctionConfig.status = 'setup';
+
+    await tournament.save();
+    res.json(tournament);
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }

@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import socket from '../socket';
+import PlayerAvatar from '../components/PlayerAvatar';
 import '../styles/BigScreen.css';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
@@ -198,6 +199,17 @@ export default function BigScreenPage() {
       }
     };
 
+    const onPhotoUpdated = ({ playerName, photoUrl }) => {
+      setMatch((prev) => {
+        if (!prev) return prev;
+        const copy = { ...prev };
+        if (copy.teamA?.playerPhotos) copy.teamA.playerPhotos = { ...copy.teamA.playerPhotos, [playerName]: photoUrl };
+        if (copy.teamB?.playerPhotos) copy.teamB.playerPhotos = { ...copy.teamB.playerPhotos, [playerName]: photoUrl };
+        return copy;
+      });
+    };
+
+    socket.on('playerPhotoUpdated', onPhotoUpdated);
     socket.on('matchScoreUpdate', onScoreUpdate);
     socket.on('viewerCountUpdate', onViewerCount);
     socket.on('matchStreamUpdate', onStreamUpdate);
@@ -206,6 +218,7 @@ export default function BigScreenPage() {
 
     return () => {
       socket.emit('leaveMatchViewer');
+      socket.off('playerPhotoUpdated', onPhotoUpdated);
       socket.off('matchScoreUpdate', onScoreUpdate);
       socket.off('viewerCountUpdate', onViewerCount);
       socket.off('matchStreamUpdate', onStreamUpdate);
@@ -402,6 +415,24 @@ export default function BigScreenPage() {
     economy: 0,
   };
 
+  const strikerPhoto =
+    strikerStats.photoUrl ||
+    match[battingTeamKey]?.playerPhotos?.[strikerStats.name] ||
+    curState?.strikerPhoto ||
+    '';
+
+  const nonStrikerPhoto =
+    nonStrikerStats.photoUrl ||
+    match[battingTeamKey]?.playerPhotos?.[nonStrikerStats.name] ||
+    curState?.nonStrikerPhoto ||
+    '';
+
+  const bowlerPhoto =
+    bowlerStats.photoUrl ||
+    match[bowlingTeamKey]?.playerPhotos?.[bowlerStats.name] ||
+    curState?.bowlerPhoto ||
+    '';
+
   const recentBalls = latestInningsSummary?.recentBalls || [];
   const partnership = latestInningsSummary?.currentPartnership;
   const commentary = latestInningsSummary?.latestCommentary;
@@ -573,10 +604,22 @@ export default function BigScreenPage() {
               {/* Striker Card */}
               <div className="bs-player-card bs-player-card-striker">
                 <div className="bs-player-top">
-                  <h3 className="bs-player-name">
-                    <span className="bs-strike-star">⭐</span> {strikerStats.name}
-                  </h3>
-                  <span className="bs-player-role-badge bs-player-role-striker">ON STRIKE</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <PlayerAvatar
+                      name={strikerStats.name}
+                      photoUrl={strikerPhoto}
+                      size={52}
+                      variant="cutout"
+                    />
+                    <div>
+                      <h3 className="bs-player-name" style={{ margin: 0 }}>
+                        <span className="bs-strike-star">⭐</span> {strikerStats.name}
+                      </h3>
+                      <span className="bs-player-role-badge bs-player-role-striker" style={{ marginTop: 4, display: 'inline-block' }}>
+                        ON STRIKE
+                      </span>
+                    </div>
+                  </div>
                 </div>
                 <div className="bs-player-metrics-grid">
                   <div className="bs-metric-box">
@@ -601,8 +644,22 @@ export default function BigScreenPage() {
               {/* Non-Striker Card */}
               <div className="bs-player-card">
                 <div className="bs-player-top">
-                  <h3 className="bs-player-name">{nonStrikerStats.name}</h3>
-                  <span className="bs-player-role-badge">NON-STRIKER</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <PlayerAvatar
+                      name={nonStrikerStats.name}
+                      photoUrl={nonStrikerPhoto}
+                      size={52}
+                      variant="cutout"
+                    />
+                    <div>
+                      <h3 className="bs-player-name" style={{ margin: 0 }}>
+                        {nonStrikerStats.name}
+                      </h3>
+                      <span className="bs-player-role-badge" style={{ marginTop: 4, display: 'inline-block' }}>
+                        NON-STRIKER
+                      </span>
+                    </div>
+                  </div>
                 </div>
                 <div className="bs-player-metrics-grid">
                   <div className="bs-metric-box">
@@ -627,8 +684,22 @@ export default function BigScreenPage() {
               {/* Bowler Card */}
               <div className="bs-player-card bs-player-card-bowler">
                 <div className="bs-player-top">
-                  <h3 className="bs-player-name">🎯 {bowlerStats.name}</h3>
-                  <span className="bs-player-role-badge bs-player-role-bowler">BOWLING</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <PlayerAvatar
+                      name={bowlerStats.name}
+                      photoUrl={bowlerPhoto}
+                      size={52}
+                      variant="cutout"
+                    />
+                    <div>
+                      <h3 className="bs-player-name" style={{ margin: 0 }}>
+                        🎯 {bowlerStats.name}
+                      </h3>
+                      <span className="bs-player-role-badge bs-player-role-bowler" style={{ marginTop: 4, display: 'inline-block' }}>
+                        BOWLING
+                      </span>
+                    </div>
+                  </div>
                 </div>
                 <div className="bs-player-metrics-grid">
                   <div className="bs-metric-box">

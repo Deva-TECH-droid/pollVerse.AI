@@ -42,9 +42,24 @@ function TournamentsListPage() {
         <div className="gc-match-list">
           {tournaments.map((t) => (
             <Link key={t._id} to={`/gully-cricket/tournament/${t._id}`} className="gc-match-card">
-              <span className={`tr-status-badge tr-status-${t.status}`} style={{ position: 'absolute', top: 16, right: 20, margin: 0 }}>
-                {t.status}
-              </span>
+              <div style={{ position: 'absolute', top: 16, right: 20, display: 'flex', gap: 6 }}>
+                {t.hasAuction && (
+                  <span style={{
+                    background: 'rgba(245, 158, 11, 0.2)',
+                    border: '1px solid #f59e0b',
+                    color: '#fef08a',
+                    padding: '3px 8px',
+                    borderRadius: 12,
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                  }}>
+                    🔨 Auction
+                  </span>
+                )}
+                <span className={`tr-status-badge tr-status-${t.status}`} style={{ margin: 0 }}>
+                  {t.status}
+                </span>
+              </div>
               <p className="gc-match-teams">{t.name}</p>
               <p className="gc-match-meta">
                 {t.teams.length}/{t.numberOfTeams} teams · {t.oversPerMatch} overs

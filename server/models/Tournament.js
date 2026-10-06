@@ -6,6 +6,8 @@ const playerSchema = new mongoose.Schema({
   battingStyle: { type: String, default: '' },
   bowlingStyle: { type: String, default: '' },
   jerseyNumber: { type: Number, default: null },
+  photoUrl: { type: String, default: '' },
+  price: { type: Number, default: 0 },
 });
 
 const tournamentTeamSchema = new mongoose.Schema({
@@ -13,7 +15,9 @@ const tournamentTeamSchema = new mongoose.Schema({
   captain: { type: String, default: '' },
   viceCaptain: { type: String, default: '' },
   logo: { type: String, default: '' }, // URL, optional
+  budget: { type: Number, default: 100 },
   players: { type: [playerSchema], default: [] },
+  isUserTeam: { type: Boolean, default: false },
 });
 
 const fixtureSchema = new mongoose.Schema({
@@ -25,6 +29,20 @@ const fixtureSchema = new mongoose.Schema({
   stage: { type: String, enum: ['league', 'qualifier1', 'eliminator', 'qualifier2', 'final'], default: 'league' },
   matchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Match', default: null }, // linked once someone starts scoring it
   status: { type: String, enum: ['scheduled', 'live', 'completed'], default: 'scheduled' },
+});
+
+const auctionPlayerSchema = new mongoose.Schema({
+  id: { type: String },
+  name: { type: String, required: true, trim: true },
+  role: { type: String, default: 'All-Rounder' },
+  category: { type: String, default: 'All' },
+  country: { type: String, default: 'India' },
+  basePrice: { type: Number, default: 1.0 },
+  soldPrice: { type: Number, default: 0 },
+  soldTo: { type: String, default: null },
+  status: { type: String, enum: ['pending', 'bidding', 'sold', 'unsold'], default: 'pending' },
+  photoUrl: { type: String, default: '' },
+  stats: { type: mongoose.Schema.Types.Mixed, default: {} },
 });
 
 const tournamentSchema = new mongoose.Schema({
@@ -44,6 +62,18 @@ const tournamentSchema = new mongoose.Schema({
   description: { type: String, default: '' },
   rules: { type: String, default: '' },
   registrationDeadline: { type: Date, default: null },
+
+  // Auction feature
+  hasAuction: { type: Boolean, default: false },
+  auctionConfig: {
+    budgetPerTeam: { type: Number, default: 100 },
+    minPlayersPerTeam: { type: Number, default: 2 },
+    maxPlayersPerTeam: { type: Number, default: 25 },
+    bidIncrement: { type: Number, default: 0.25 },
+    status: { type: String, enum: ['setup', 'in_progress', 'completed'], default: 'setup' },
+  },
+  auctionPool: { type: [auctionPlayerSchema], default: [] },
+  auctionHistory: { type: [mongoose.Schema.Types.Mixed], default: [] },
 
   teams: { type: [tournamentTeamSchema], default: [] },
   fixtures: { type: [fixtureSchema], default: [] },
