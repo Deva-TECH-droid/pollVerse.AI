@@ -83,9 +83,13 @@ app.use(express.json());
 
 // Static file serving for user-uploaded player photos & team logos
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
-  maxAge: '7d',
+  maxAge: '365d',
+  immutable: true,
+  etag: true,
+  lastModified: true,
   setHeaders: (res) => {
     res.set('Access-Control-Allow-Origin', '*');
+    res.set('Cache-Control', 'public, max-age=31536000, immutable');
   },
 }));
 

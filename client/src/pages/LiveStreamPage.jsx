@@ -77,9 +77,7 @@ function LiveStreamPage() {
   // Video Refs & WebRTC — kept in refs to avoid re-render dependency loops
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
-  const mediaStreamRef = useRef(null);
   const remoteMediaStreamRef = useRef(null);
-  const peerConnectionsRef = useRef(new Map()); // Broadcaster: viewerSocketId -> RTCPeerConnection
   const viewerPcRef = useRef(null); // Viewer: single RTCPeerConnection to broadcaster
   const iceCandidateQueueRef = useRef([]);
   const chatBottomRef = useRef(null);
@@ -251,95 +249,12 @@ function LiveStreamPage() {
     };
   }, [id]);
 
-  // ── WebRTC Signaling (separate effect, stable deps) ─────────────────
+  // ── WebRTC Signaling — Viewer Only (broadcaster handled by StreamContext) ─────────────────────
   useEffect(() => {
-    // 4. WebRTC: Broadcaster receives notification of new viewer
-    const onViewerJoined = async ({ viewerSocketId }) => {
-      if (!viewerSocketId) return;
-
-      // Wait for media stream to be ready before creating offer
-      const waitForStream = () => {
-        return new Promise((resolve) => {
-          if (mediaStreamRef.current) return resolve(true);
-          let retries = 0;
-          const timer = setInterval(() => {
-            retries++;
-            if (mediaStreamRef.current) {
-              clearInterval(timer);
-              resolve(true);
-            } else if (retries >= 10) {
-              clearInterval(timer);
-              resolve(false);
-            }
-          }, 500);
-        });
-      };
-
-      const ready = await waitForStream();
-      if (!ready || !mountedRef.current) {
-        console.warn('⚠️ Broadcaster stream not ready for viewer:', viewerSocketId);
-        return;
-      }
-
-      try {
-        console.log(`🎥 Broadcaster creating offer for viewer ${viewerSocketId}`);
-        // Close stale connection for this viewer if any
-        const existingPc = peerConnectionsRef.current.get(viewerSocketId);
-        if (existingPc) { try { existingPc.close(); } catch (e) { } }
-
-        const pc = new RTCPeerConnection(RTC_CONFIG);
-        peerConnectionsRef.current.set(viewerSocketId, pc);
-
-        mediaStreamRef.current.getTracks().forEach((track) => {
-          pc.addTrack(track, mediaStreamRef.current);
-        });
-
-        pc.onicecandidate = (event) => {
-          if (event.candidate) {
-            socket.emit('streamIceCandidate', {
-              targetSocketId: viewerSocketId,
-              candidate: event.candidate,
-            });
-          }
-        };
-
-        pc.onconnectionstatechange = () => {
-          console.log(`WebRTC → viewer ${viewerSocketId}: ${pc.connectionState}`);
-          if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
-            try { pc.close(); } catch (e) { }
-            peerConnectionsRef.current.delete(viewerSocketId);
-          }
-        };
-
-        const offer = await pc.createOffer({ offerToReceiveAudio: false, offerToReceiveVideo: false });
-        await pc.setLocalDescription(offer);
-
-        socket.emit('streamOffer', {
-          matchId: id,
-          targetSocketId: viewerSocketId,
-          offer,
-        });
-      } catch (err) {
-        console.error('Error creating offer for viewer:', err);
-      }
-    };
-    socket.on('streamViewerJoined', onViewerJoined);
-
-    // 5. WebRTC: Broadcaster receives answer from viewer
-    const onStreamAnswer = async ({ viewerSocketId, answer }) => {
-      const pc = peerConnectionsRef.current.get(viewerSocketId);
-      if (pc && answer) {
-        try {
-          await pc.setRemoteDescription(new RTCSessionDescription(answer));
-        } catch (err) {
-          console.error('Error setting remote description from answer:', err);
-        }
-      }
-    };
-    socket.on('streamAnswer', onStreamAnswer);
-
-    // 6. WebRTC: Viewer receives offer from broadcaster
+    // Viewers receive the stream offer from the broadcaster
     const onStreamOffer = async ({ broadcasterSocketId, offer }) => {
+      // Creators don't receive their own stream as viewers
+      if (isCreator) return;
       try {
         console.log('🎥 Viewer received stream offer from broadcaster');
         if (viewerPcRef.current) {
@@ -382,7 +297,6 @@ function LiveStreamPage() {
             console.log('🔄 Viewer connection failed — requesting re-stream');
             try { pc.close(); } catch (e) { }
             viewerPcRef.current = null;
-            // Re-request stream after a short delay
             setTimeout(() => {
               if (mountedRef.current) {
                 socket.emit('streamViewerJoin', { matchId: id });
@@ -415,18 +329,12 @@ function LiveStreamPage() {
     };
     socket.on('streamOffer', onStreamOffer);
 
-    // 7. WebRTC: ICE Candidate exchange
+    // ICE Candidate exchange — for viewers receiving from broadcaster
     const onIceCandidate = async ({ fromSocketId, candidate }) => {
       if (!candidate) return;
+      // Creator side: handled by StreamContext — skip
+      if (isCreator) return;
       try {
-        const pcBroadcaster = peerConnectionsRef.current.get(fromSocketId);
-        if (pcBroadcaster) {
-          if (pcBroadcaster.remoteDescription) {
-            await pcBroadcaster.addIceCandidate(new RTCIceCandidate(candidate));
-          }
-          return;
-        }
-
         if (viewerPcRef.current) {
           if (viewerPcRef.current.remoteDescription) {
             await viewerPcRef.current.addIceCandidate(new RTCIceCandidate(candidate));
@@ -440,35 +348,17 @@ function LiveStreamPage() {
     };
     socket.on('streamIceCandidate', onIceCandidate);
 
-    const pcs = peerConnectionsRef.current;
-
-    // Cleanup: only close WebRTC on full unmount
     return () => {
-      socket.off('streamViewerJoined', onViewerJoined);
-      socket.off('streamAnswer', onStreamAnswer);
       socket.off('streamOffer', onStreamOffer);
       socket.off('streamIceCandidate', onIceCandidate);
 
-      // Close all broadcaster peer connections
-      pcs.forEach((pc) => {
-        try { pc.close(); } catch (e) { }
-      });
-      pcs.clear();
-
-      // Close viewer peer connection
+      // Close viewer peer connection on unmount
       if (viewerPcRef.current) {
         try { viewerPcRef.current.close(); } catch (e) { }
         viewerPcRef.current = null;
       }
-
-      // Stop camera if active
-      if (mediaStreamRef.current) {
-        mediaStreamRef.current.getTracks().forEach((track) => track.stop());
-        mediaStreamRef.current = null;
-      }
-      socket.emit('streamStopped', { matchId: id });
     };
-  }, [id]);
+  }, [id, isCreator]);
 
   const isBroadcastingThisMatch = Boolean(
     ctxCameraActive && activeMatchId === id && persistentMediaStream

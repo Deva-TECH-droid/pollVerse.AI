@@ -1062,8 +1062,11 @@ router.post('/matches/:id/ball', requireAuth, async (req, res) => {
 
 // ---------------------------------------------------------------------------
 // Image Upload Endpoint (Player photos & Team logos)
-// Validates max 2MB, JPG/JPEG/PNG/WebP, stores in /uploads/
+// Validates max 2MB, JPG/JPEG/PNG/WebP.
+// Photos are stored as base64 data URLs in MongoDB (permanent across server
+// restarts) AND served from /uploads/ as a fallback for larger files.
 // ---------------------------------------------------------------------------
+const fs = require('fs');
 router.post('/upload', requireAuth, (req, res) => {
   upload.single('file')(req, res, (err) => {
     if (err) {
@@ -1075,13 +1078,35 @@ router.post('/upload', requireAuth, (req, res) => {
     const type = req.query.type || req.body.type || 'players';
     const subfolder = type === 'teams' ? 'teams' : 'players';
     const fileUrl = `/uploads/${subfolder}/${req.file.filename}`;
-    res.json({
-      success: true,
-      url: fileUrl,
-      filename: req.file.filename,
-      size: req.file.size,
-      mimetype: req.file.mimetype,
-    });
+
+    // Convert to base64 data URL for permanent MongoDB storage
+    // (ensures photos survive server restarts on ephemeral filesystems)
+    try {
+      const filePath = req.file.path;
+      const fileBuffer = fs.readFileSync(filePath);
+      const base64 = fileBuffer.toString('base64');
+      const mimeType = req.file.mimetype || 'image/jpeg';
+      const dataUrl = `data:${mimeType};base64,${base64}`;
+
+      res.json({
+        success: true,
+        url: dataUrl,          // primary: permanent base64 in MongoDB
+        fallbackUrl: fileUrl,  // secondary: filesystem path
+        filename: req.file.filename,
+        size: req.file.size,
+        mimetype: req.file.mimetype,
+      });
+    } catch (fsErr) {
+      // If base64 conversion fails, fall back to filesystem URL
+      console.warn('Base64 conversion failed, using filesystem URL:', fsErr.message);
+      res.json({
+        success: true,
+        url: fileUrl,
+        filename: req.file.filename,
+        size: req.file.size,
+        mimetype: req.file.mimetype,
+      });
+    }
   });
 });
 

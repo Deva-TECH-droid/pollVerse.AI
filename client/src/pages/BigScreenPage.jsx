@@ -11,7 +11,26 @@ const ICE_SERVERS = {
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
     { urls: 'stun:stun2.l.google.com:19302' },
+    { urls: 'stun:stun3.l.google.com:19302' },
+    { urls: 'stun:stun4.l.google.com:19302' },
+    // Open TURN relay — required for mobile-to-laptop cross-network streaming
+    {
+      urls: 'turn:openrelay.metered.ca:80',
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    },
+    {
+      urls: 'turn:openrelay.metered.ca:443',
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    },
+    {
+      urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    },
   ],
+  iceCandidatePoolSize: 10,
 };
 
 export default function BigScreenPage() {
@@ -27,7 +46,7 @@ export default function BigScreenPage() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showVideo, setShowVideo] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(false);
-  const [celebration, setCelebration] = useState(null); // { type: 'six' | 'four' | 'wicket', text: string, sub: string }
+  const [celebration, setCelebration] = useState(null); // { type: 'six'|'four'|'wicket'|'noball'|'wide'|'legbye', text, sub }
 
   // Streaming WebRTC refs
   const [isStreaming, setIsStreaming] = useState(false);
@@ -40,47 +59,76 @@ export default function BigScreenPage() {
   // Sequence tracking to prevent out-of-order broadcasts
   const lastSeqRef = useRef(0);
   const celebrationTimeoutRef = useRef(null);
+  const broadcasterSocketIdRef = useRef(null); // Track broadcaster socket for ICE
 
-  // Synthesized Web Audio sound effects (no external mp3 files required)
+  // Synthesized Web Audio sound effects — rich multi-oscillator for realism
   const playSound = useCallback((type) => {
     if (!soundEnabled) return;
     try {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
       if (!AudioCtx) return;
       const ctx = new AudioCtx();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
 
-      const now = ctx.currentTime;
+      const schedule = (freq, wave, gainVal, start, duration) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = wave;
+        osc.frequency.setValueAtTime(freq, ctx.currentTime + start);
+        gain.gain.setValueAtTime(0, ctx.currentTime + start);
+        gain.gain.linearRampToValueAtTime(gainVal, ctx.currentTime + start + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + duration);
+        osc.start(ctx.currentTime + start);
+        osc.stop(ctx.currentTime + start + duration);
+      };
+
       if (type === 'six') {
-        // High ascending cheer fanfare
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(440, now);
-        osc.frequency.exponentialRampToValueAtTime(880, now + 0.3);
-        gain.gain.setValueAtTime(0.3, now);
-        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
-        osc.start(now);
-        osc.stop(now + 0.6);
+        // Crowd roar fanfare — ascending tri-tone burst
+        schedule(330, 'triangle', 0.35, 0,    0.18);
+        schedule(415, 'triangle', 0.35, 0.12, 0.22);
+        schedule(523, 'triangle', 0.4,  0.22, 0.30);
+        schedule(660, 'triangle', 0.4,  0.38, 0.40);
+        schedule(880, 'sine',     0.3,  0.55, 0.50);
+        // Bass thump
+        schedule(80,  'sine',     0.25, 0,    0.25);
       } else if (type === 'four') {
-        // Upbeat boundary chime
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(523.25, now);
-        osc.frequency.setValueAtTime(659.25, now + 0.15);
-        gain.gain.setValueAtTime(0.25, now);
-        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.45);
-        osc.start(now);
-        osc.stop(now + 0.45);
+        // Crisp boundary chime — two-note snap
+        schedule(523, 'sine',  0.3,  0,    0.22);
+        schedule(659, 'sine',  0.3,  0.18, 0.28);
+        schedule(784, 'sine',  0.25, 0.32, 0.35);
       } else if (type === 'wicket') {
-        // Dramatic descent
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(300, now);
-        osc.frequency.exponentialRampToValueAtTime(100, now + 0.4);
-        gain.gain.setValueAtTime(0.3, now);
-        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
-        osc.start(now);
-        osc.stop(now + 0.5);
+        // Dramatic crash + stumps rattling
+        schedule(180, 'sawtooth', 0.4, 0,    0.15);
+        schedule(120, 'sawtooth', 0.4, 0.10, 0.25);
+        schedule(80,  'square',   0.3, 0.20, 0.30);
+        schedule(60,  'sine',     0.35, 0.30, 0.50);
+      } else if (type === 'noball') {
+        // Umpire “NO BALL” call sequence — sharp two-note rising alarm
+        schedule(400, 'square',   0.3, 0,    0.12);
+        schedule(600, 'square',   0.35, 0.14, 0.12);
+        schedule(400, 'square',   0.3, 0.28, 0.12);
+        schedule(700, 'square',   0.4, 0.42, 0.18);
+        // Short buzz undertone
+        schedule(150, 'sawtooth', 0.2, 0,    0.60);
+      } else if (type === 'wide') {
+        // Whistle-like sweep
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(800, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1400, ctx.currentTime + 0.2);
+        osc.frequency.exponentialRampToValueAtTime(900, ctx.currentTime + 0.4);
+        gain.gain.setValueAtTime(0.25, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.5);
+      } else if (type === 'legbye') {
+        // Soft thud + run sound
+        schedule(200, 'sine', 0.25, 0,    0.15);
+        schedule(300, 'sine', 0.2,  0.10, 0.20);
       }
     } catch (e) {
       console.warn('Audio playback error:', e);
@@ -161,11 +209,17 @@ export default function BigScreenPage() {
       if (data.latestBall) {
         const lb = data.latestBall;
         if (lb.isWicket) {
-          triggerCelebration('wicket', 'WICKET!', `${lb.outBatsmanName || 'Batter'} is OUT! (${lb.wicketType || 'Wicket'})`);
-        } else if (lb.runs === 6) {
-          triggerCelebration('six', 'MAXIMUM SIX! 💥', 'Massive hit over the boundary ropes!');
-        } else if (lb.runs === 4) {
-          triggerCelebration('four', 'CRACKING FOUR! ⚡', 'Pure timing speeding to the fence!');
+          triggerCelebration('wicket', '🔴 WICKET!', `${lb.outBatsmanName || 'Batter'} is OUT! (${lb.wicketType || 'Wicket'})`);
+        } else if (lb.runs === 6 && !lb.extraType) {
+          triggerCelebration('six', '6️⃣ MAXIMUM SIX! 💥', 'Massive hit soaring over the boundary ropes!');
+        } else if (lb.runs === 4 && !lb.extraType) {
+          triggerCelebration('four', '4️⃣ CRACKING FOUR! ⚡', 'Pure timing — racing to the boundary fence!');
+        } else if (lb.extraType === 'noball') {
+          triggerCelebration('noball', '🚫 NO BALL!', lb.runs > 0 ? `Free Hit! + ${lb.runs} extra runs for the batting team!` : 'Free Hit delivery coming up!');
+        } else if (lb.extraType === 'wide') {
+          triggerCelebration('wide', '↔️ WIDE BALL!', lb.runs > 0 ? `${1 + (lb.runs || 0)} extra run${1 + (lb.runs || 0) > 1 ? 's' : ''} awarded!` : '1 extra run awarded to batting team!');
+        } else if (lb.extraType === 'legbye') {
+          triggerCelebration('legbye', '🦵 LEG BYE!', `${lb.runs || 1} run${(lb.runs || 1) > 1 ? 's' : ''} added as leg byes!`);
         }
       }
     };
@@ -183,12 +237,11 @@ export default function BigScreenPage() {
       }
     };
 
-    const onStreamBroadcasterReady = ({ matchId }) => {
+    const onStreamBroadcasterReady = ({ matchId, broadcasterSocketId }) => {
       if (String(matchId) === String(id)) {
         setIsStreaming(true);
-        if (showVideo) {
-          socket.emit('streamViewerJoin', { matchId: id });
-        }
+        // Always try to join as viewer when broadcaster announces readiness
+        socket.emit('streamViewerJoin', { matchId: id });
       }
     };
 
@@ -230,7 +283,7 @@ export default function BigScreenPage() {
 
   // WebRTC Video Receiver for optional split view
   useEffect(() => {
-    if (!showVideo || !id) return;
+    if (!id) return;
 
     const setupViewerPeerConnection = () => {
       if (viewerPcRef.current) {
@@ -255,17 +308,22 @@ export default function BigScreenPage() {
       };
 
       pc.onicecandidate = (event) => {
-        if (event.candidate) {
+        if (event.candidate && broadcasterSocketIdRef.current) {
           socket.emit('streamIceCandidate', {
-            targetSocketId: pc.broadcasterSocketId,
+            targetSocketId: broadcasterSocketIdRef.current,
             candidate: event.candidate,
           });
         }
       };
 
       pc.onconnectionstatechange = () => {
+        console.log(`BigScreen WebRTC state: ${pc.connectionState}`);
         if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
           setRemoteStreamActive(false);
+          // Auto-reconnect after short delay
+          setTimeout(() => {
+            socket.emit('streamViewerJoin', { matchId: id });
+          }, 2000);
         }
       };
 
@@ -275,14 +333,14 @@ export default function BigScreenPage() {
     const onStreamOffer = async ({ matchId, broadcasterSocketId, offer }) => {
       if (String(matchId) !== String(id)) return;
       try {
+        broadcasterSocketIdRef.current = broadcasterSocketId;
         const pc = setupViewerPeerConnection();
-        pc.broadcasterSocketId = broadcasterSocketId;
         await pc.setRemoteDescription(new RTCSessionDescription(offer));
 
         // Flush queued candidates
         while (iceCandidateQueueRef.current.length > 0) {
           const c = iceCandidateQueueRef.current.shift();
-          await pc.addIceCandidate(new RTCIceCandidate(c));
+          try { await pc.addIceCandidate(new RTCIceCandidate(c)); } catch (e) {}
         }
 
         const answer = await pc.createAnswer();
@@ -298,8 +356,10 @@ export default function BigScreenPage() {
       }
     };
 
-    const onStreamIceCandidate = async ({ candidate }) => {
+    const onStreamIceCandidate = async ({ fromSocketId, candidate }) => {
       if (!candidate || !viewerPcRef.current) return;
+      // Only process ICE from the known broadcaster
+      if (broadcasterSocketIdRef.current && fromSocketId !== broadcasterSocketIdRef.current) return;
       try {
         if (viewerPcRef.current.remoteDescription) {
           await viewerPcRef.current.addIceCandidate(new RTCIceCandidate(candidate));
@@ -324,9 +384,10 @@ export default function BigScreenPage() {
         try { viewerPcRef.current.close(); } catch (e) {}
         viewerPcRef.current = null;
       }
+      broadcasterSocketIdRef.current = null;
       setRemoteStreamActive(false);
     };
-  }, [showVideo, id]);
+  }, [id]);
 
   if (loading) {
     return (

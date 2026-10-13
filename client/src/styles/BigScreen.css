@@ -202,9 +202,9 @@
 
 /* ── Celebration Overlay / Banner ─────────────────────────────────────── */
 .bs-celebration-banner {
-  animation: bs-zoom-in 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  padding: 1.25rem 2rem;
-  border-radius: 20px;
+  animation: bs-zoom-in 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), bs-pulse-border 1.2s ease-in-out infinite alternate;
+  padding: 1.5rem 2.5rem;
+  border-radius: 22px;
   text-align: center;
   display: flex;
   flex-direction: column;
@@ -212,47 +212,99 @@
   justify-content: center;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
 }
 
+/* Shimmer sweep overlay */
+.bs-celebration-banner::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.12) 50%, transparent 60%);
+  animation: bs-shimmer 1.8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* SIX — electric purple-pink galaxy */
 .bs-celebration-six {
-  background: linear-gradient(135deg, #7c3aed, #ec4899);
+  background: linear-gradient(135deg, #4c1d95, #7c3aed 40%, #ec4899);
   border: 2px solid #f472b6;
-  box-shadow: 0 0 40px rgba(236, 72, 153, 0.5);
+  box-shadow: 0 0 50px rgba(236, 72, 153, 0.65), 0 0 100px rgba(124, 58, 237, 0.35);
 }
 
+/* FOUR — golden lightning */
 .bs-celebration-four {
-  background: linear-gradient(135deg, #d97706, #f59e0b);
-  border: 2px solid #fde047;
-  box-shadow: 0 0 40px rgba(245, 158, 11, 0.5);
+  background: linear-gradient(135deg, #92400e, #d97706 40%, #fbbf24);
+  border: 2px solid #fde68a;
+  box-shadow: 0 0 50px rgba(251, 191, 36, 0.6), 0 0 100px rgba(217, 119, 6, 0.3);
 }
 
+/* WICKET — blood red drama */
 .bs-celebration-wicket {
-  background: linear-gradient(135deg, #b91c1c, #dc2626);
-  border: 2px solid #f87171;
-  box-shadow: 0 0 40px rgba(220, 38, 38, 0.6);
+  background: linear-gradient(135deg, #7f1d1d, #b91c1c 40%, #ef4444);
+  border: 2px solid #fca5a5;
+  box-shadow: 0 0 50px rgba(239, 68, 68, 0.7), 0 0 100px rgba(185, 28, 28, 0.4);
+}
+
+/* NO BALL — umpire orange-red signal */
+.bs-celebration-noball {
+  background: linear-gradient(135deg, #7c2d12, #c2410c 40%, #f97316);
+  border: 2px solid #fdba74;
+  box-shadow: 0 0 50px rgba(249, 115, 22, 0.65), 0 0 100px rgba(194, 65, 12, 0.4);
+}
+
+/* WIDE — umpire cyan/teal arm-out */
+.bs-celebration-wide {
+  background: linear-gradient(135deg, #0c4a6e, #0369a1 40%, #38bdf8);
+  border: 2px solid #7dd3fc;
+  box-shadow: 0 0 50px rgba(56, 189, 248, 0.6), 0 0 100px rgba(3, 105, 161, 0.35);
+}
+
+/* LEG BYE — soft teal/green */
+.bs-celebration-legbye {
+  background: linear-gradient(135deg, #064e3b, #047857 40%, #10b981);
+  border: 2px solid #6ee7b7;
+  box-shadow: 0 0 50px rgba(16, 185, 129, 0.55), 0 0 100px rgba(4, 120, 87, 0.3);
 }
 
 .bs-celebration-title {
   font-family: 'Chakra Petch', sans-serif;
-  font-size: 3rem;
+  font-size: clamp(2rem, 5vw, 3.5rem);
   font-weight: 900;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   color: #ffffff;
-  text-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  text-shadow: 0 4px 20px rgba(0, 0, 0, 0.6), 0 0 40px currentColor;
   margin: 0;
   line-height: 1;
+  animation: bs-text-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
 .bs-celebration-sub {
-  font-size: 1.2rem;
-  color: rgba(255, 255, 255, 0.9);
-  margin: 0.35rem 0 0;
+  font-size: clamp(0.9rem, 2.5vw, 1.25rem);
+  color: rgba(255, 255, 255, 0.92);
+  margin: 0.5rem 0 0;
   font-weight: 600;
+  letter-spacing: 0.02em;
 }
 
 @keyframes bs-zoom-in {
-  0% { transform: scale(0.6); opacity: 0; }
+  0% { transform: scale(0.5) rotate(-2deg); opacity: 0; }
+  70% { transform: scale(1.05) rotate(0.5deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+@keyframes bs-pulse-border {
+  0% { box-shadow: var(--bs-shadow-base, 0 20px 60px rgba(0,0,0,0.7)); }
+  100% { box-shadow: var(--bs-shadow-glow, 0 20px 60px rgba(0,0,0,0.7)), 0 0 0 6px rgba(255,255,255,0.12); }
+}
+
+@keyframes bs-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+
+@keyframes bs-text-pop {
+  0% { transform: scale(0.7); opacity: 0; }
   100% { transform: scale(1); opacity: 1; }
 }
 
